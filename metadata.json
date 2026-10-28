@@ -1,0 +1,6 @@
+{
+  "name": "AtomicOne Micro-Habits",
+  "description": "Fokussierter Neo-Brutalist Micro-Habit Web-Tracker mit 1-Tap Logging, monatlicher Konsistenz-Matrix, Tastatur-Shortcuts, Wochen-Rhythmus Analyse und Dark Mode.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
