@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MicroHabit, HabitExecution, MonthlyConsistency } from '../types/habit';
-import { getTodayDateString, getCurrentYearMonth, getDaysInMonth } from '../utils/date';
+import { MicroHabit, HabitExecution, MonthlyConsistency, WeeklyVictoryStatus, WeeklyVictoryDay } from '../types/habit';
+import { getTodayDateString, getCurrentYearMonth, getDaysInMonth, getRollingWeekDays, formatRangeGerman } from '../utils/date';
 
 const STORAGE_KEY_HABITS = 'atomic_habits_v1';
 const STORAGE_KEY_LOGS = 'atomic_logs_v1';
@@ -332,6 +332,113 @@ export const habitStorage = {
     });
 
     this.saveHabits(current);
+  },
+
+  getWeeklyVictoryStatus(endDateString: string = getTodayDateString()): WeeklyVictoryStatus {
+    const habits = this.getHabits().filter((h) => !h.archived);
+    const logs = this.getLogs();
+    const rollingDays = getRollingWeekDays(endDateString);
+    const weekdayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+
+    const evaluateDays = (daysList: string[]) => {
+      let qualifyingCount = 0;
+      let totalPct = 0;
+      const dayItems: WeeklyVictoryDay[] = [];
+
+      daysList.forEach((dayStr) => {
+        const [y, m, d] = dayStr.split('-').map(Number);
+        const dayDate = new Date(y, m - 1, d);
+        const weekdayName = weekdayNames[dayDate.getDay()];
+        const dayLogs = logs.filter((l) => l.date === dayStr && habits.some((h) => h.id === l.habitId));
+        const completedIds = Array.from(new Set(dayLogs.map((l) => l.habitId)));
+        const completedCount = completedIds.length;
+        const total = habits.length;
+        const percentage = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+        const passed = total > 0 && percentage >= 80;
+
+        if (passed) {
+          qualifyingCount++;
+        }
+        totalPct += percentage;
+
+        dayItems.push({
+          date: dayStr,
+          weekdayName,
+          completedCount,
+          totalHabits: total,
+          percentage,
+          passed,
+        });
+      });
+
+      return {
+        qualifyingCount,
+        averagePercentage: daysList.length > 0 ? Math.round(totalPct / daysList.length) : 0,
+        dayItems,
+      };
+    };
+
+    const currentEval = evaluateDays(rollingDays);
+    const isCurrentVictory = currentEval.qualifyingCount === 7 && habits.length > 0;
+
+    let isVictory = isCurrentVictory;
+    let chosenDays = currentEval.dayItems;
+    let chosenQualifying = currentEval.qualifyingCount;
+    let chosenAvg = currentEval.averagePercentage;
+    let startDay = rollingDays[0];
+    let endDay = rollingDays[rollingDays.length - 1];
+
+    if (!isVictory) {
+      // Fallback check: Did the 7-day period ending yesterday qualify?
+      const [y, m, d] = endDateString.split('-').map(Number);
+      const yesterday = new Date(y, m - 1, d);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const prevDateStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+      const prevRolling = getRollingWeekDays(prevDateStr);
+      const prevEval = evaluateDays(prevRolling);
+      if (prevEval.qualifyingCount === 7 && habits.length > 0) {
+        isVictory = true;
+        chosenDays = prevEval.dayItems;
+        chosenQualifying = prevEval.qualifyingCount;
+        chosenAvg = prevEval.averagePercentage;
+        startDay = prevRolling[0];
+        endDay = prevRolling[prevRolling.length - 1];
+      }
+    }
+
+    return {
+      isVictory,
+      qualifyingDaysCount: chosenQualifying,
+      totalDays: 7,
+      startDate: startDay,
+      endDate: endDay,
+      dateRangeLabel: formatRangeGerman(startDay, endDay),
+      days: chosenDays,
+      averagePercentage: chosenAvg,
+    };
+  },
+
+  seedVictoryWeek(endDateString: string = getTodayDateString()): void {
+    const habits = this.getHabits().filter((h) => !h.archived);
+    const rollingDays = getRollingWeekDays(endDateString);
+    const currentLogs = this.getLogs();
+
+    // Remove existing logs for these 7 days to avoid duplicates
+    const filteredLogs = currentLogs.filter((l) => !rollingDays.includes(l.date));
+
+    // Add 100% completions for all active habits across these 7 days
+    rollingDays.forEach((dayStr) => {
+      habits.forEach((habit) => {
+        filteredLogs.push({
+          id: `victory-${dayStr}-${habit.id}`,
+          habitId: habit.id,
+          date: dayStr,
+          completedAt: new Date().toISOString(),
+        });
+      });
+    });
+
+    this.saveLogs(filteredLogs);
   },
 
   resetToDefaults(): void {

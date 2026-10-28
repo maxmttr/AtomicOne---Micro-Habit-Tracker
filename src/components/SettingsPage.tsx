@@ -317,41 +317,56 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             Deine Gewohnheiten und täglichen Logs werden ausschließlich im lokalen Speicher abgelegt (kein Tracking, kein Cloud-Zwang).
           </p>
 
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={handleExportJSON}
-              className="flex-1 py-2 px-3 border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-xs font-mono-numbers font-bold text-zinc-900 dark:text-zinc-100 flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
-            >
-              {exportDone ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  JSON heruntergeladen
-                </>
-              ) : (
-                <>
-                  <Download className="w-3.5 h-3.5" />
-                  Backup exportieren (.json)
-                </>
-              )}
-            </button>
+          <div className="flex flex-col gap-2 pt-1">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportJSON}
+                className="flex-1 py-2 px-3 border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-xs font-mono-numbers font-bold text-zinc-900 dark:text-zinc-100 flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+              >
+                {exportDone ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    JSON heruntergeladen
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5" />
+                    Backup exportieren (.json)
+                  </>
+                )}
+              </button>
 
+              <button
+                type="button"
+                onClick={handleExecuteReset}
+                className="py-2 px-3 border-2 border-zinc-900 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-mono-numbers font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+              >
+                {resetDone ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Neu geladen!
+                  </>
+                ) : (
+                  <>
+                    <RefreshCcw className="w-3.5 h-3.5" />
+                    Demodaten Reset
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Test Victory Button */}
             <button
               type="button"
-              onClick={handleExecuteReset}
-              className="py-2 px-3 border-2 border-zinc-900 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-mono-numbers font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+              onClick={() => {
+                habitStorage.seedVictoryWeek();
+                setResetDone(true);
+                setTimeout(() => setResetDone(false), 2000);
+              }}
+              className="w-full py-2 px-3 border-2 border-zinc-900 dark:border-zinc-700 bg-[#D8F22A] text-zinc-950 font-mono-numbers font-bold text-xs flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] hover:bg-lime-300 cursor-pointer"
             >
-              {resetDone ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  Neu geladen!
-                </>
-              ) : (
-                <>
-                  <RefreshCcw className="w-3.5 h-3.5" />
-                  Demodaten Reset
-                </>
-              )}
+              <span>🏆 Wöchentliche Victory testen (7 Tage ≥ 80% füllen)</span>
             </button>
           </div>
         </div>

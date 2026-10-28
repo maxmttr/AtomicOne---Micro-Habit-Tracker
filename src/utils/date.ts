@@ -55,3 +55,27 @@ export function getMonthLabel(yearMonth: string): string {
   ];
   return `${months[month - 1]} ${year}`;
 }
+
+export function getRollingWeekDays(endDateString: string): string[] {
+  const [year, month, day] = endDateString.split('-').map(Number);
+  const targetDate = new Date(year, month - 1, day);
+  const result: string[] = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(targetDate);
+    d.setDate(targetDate.getDate() - i);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(d.getDate()).padStart(2, '0');
+    result.push(`${y}-${m}-${dayStr}`);
+  }
+
+  return result;
+}
+
+export function formatRangeGerman(startDate: string, endDate: string): string {
+  const [, startM, startD] = startDate.split('-');
+  const [, endM, endD] = endDate.split('-');
+  return `${startD}.${startM}. – ${endD}.${endM}.`;
+}
+

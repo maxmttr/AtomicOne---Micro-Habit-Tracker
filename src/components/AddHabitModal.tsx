@@ -11,6 +11,7 @@ interface AddHabitModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (habit: Omit<MicroHabit, 'id' | 'createdAt' | 'orderIndex' | 'archived'>) => void;
+  initialValues?: { title?: string; cue?: string; timeEstimate?: string; color?: string } | null;
 }
 
 const PRESETS = [
@@ -27,11 +28,26 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   isOpen,
   onClose,
   onAdd,
+  initialValues,
 }) => {
   const [title, setTitle] = useState('');
   const [cue, setCue] = useState('');
   const [timeEstimate, setTimeEstimate] = useState('1 min');
   const [color, setColor] = useState('#D8F22A');
+
+  React.useEffect(() => {
+    if (initialValues && isOpen) {
+      setTitle(initialValues.title || '');
+      setCue(initialValues.cue || '');
+      setTimeEstimate(initialValues.timeEstimate || '1 min');
+      setColor(initialValues.color || '#D8F22A');
+    } else if (!isOpen) {
+      setTitle('');
+      setCue('');
+      setTimeEstimate('1 min');
+      setColor('#D8F22A');
+    }
+  }, [initialValues, isOpen]);
 
   if (!isOpen) return null;
 

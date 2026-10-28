@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
-import { MicroHabit, HabitExecution, MonthlyConsistency } from './types/habit';
+import { MicroHabit, HabitExecution, MonthlyConsistency, WeeklyVictoryStatus, AiHabitSuggestion } from './types/habit';
 import { habitStorage } from './services/habitStorage';
 import { soundManager } from './utils/audio';
 import { Haptics } from './utils/haptics';
@@ -13,6 +13,8 @@ import { getTodayDateString, getCurrentYearMonth, formatDateGerman, formatShortD
 
 import { HabitCard } from './components/HabitCard';
 import { MonthlyScoreCard } from './components/MonthlyScoreCard';
+import { WeeklyVictoryCard } from './components/WeeklyVictoryCard';
+import { AiHabitSuggestionCard } from './components/AiHabitSuggestionCard';
 import { AddHabitModal } from './components/AddHabitModal';
 import { EditHabitModal } from './components/EditHabitModal';
 import { SettingsPage } from './components/SettingsPage';
@@ -24,6 +26,7 @@ import {
   Volume2,
   VolumeX,
   Sparkles,
+  Trophy,
   Calendar,
   Layers,
   RefreshCcw,
@@ -45,10 +48,12 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'today' | 'monthly' | 'rhythm' | 'settings'>('today');
   const [filterMode, setFilterMode] = useState<'all' | 'pending' | 'completed'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addModalInitialValues, setAddModalInitialValues] = useState<{ title?: string; cue?: string; timeEstimate?: string; color?: string } | null>(null);
   const [editingHabit, setEditingHabit] = useState<MicroHabit | null>(null);
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [undoState, setUndoState] = useState<{ message: string; habitId: string; date: string } | null>(null);
+  const [victoryDismissed, setVictoryDismissed] = useState(false);
 
   // Dark mode state with persistence
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -98,10 +103,45 @@ export default function App() {
   // Consistency for active month
   const consistency: MonthlyConsistency = habitStorage.getMonthlyConsistency(activeYearMonth);
 
-  // Toggle Habit execution with Expo Haptics physical feedback
+  // Weekly Victory status: checks if every single day in the 7-day period is >= 80%
+  const weeklyVictory: WeeklyVictoryStatus = habitStorage.getWeeklyVictoryStatus(selectedDate);
+
+  // Celebratory Victory Confetti Animation (Multi-stage burst)
+  const fireVictoryConfetti = useCallback(() => {
+    soundManager.playCelebrationChime();
+    // Left Cannon
+    confetti({
+      particleCount: 90,
+      angle: 60,
+      spread: 60,
+      origin: { x: 0.1, y: 0.65 },
+      colors: ['#D8F22A', '#141414', '#FF5C00', '#3B82F6', '#10B981'],
+    });
+    // Right Cannon
+    confetti({
+      particleCount: 90,
+      angle: 120,
+      spread: 60,
+      origin: { x: 0.9, y: 0.65 },
+      colors: ['#D8F22A', '#141414', '#FF5C00', '#3B82F6', '#10B981'],
+    });
+    // Center Firework
+    setTimeout(() => {
+      confetti({
+        particleCount: 110,
+        spread: 90,
+        origin: { x: 0.5, y: 0.45 },
+        colors: ['#D8F22A', '#FF5C00', '#FFFFFF', '#3B82F6'],
+      });
+    }, 220);
+  }, []);
+
+  // Toggle Habit execution with Expo Haptics physical feedback and Victory detection
   const handleToggleHabit = useCallback(async (habitId: string) => {
     const habit = habits.find((h) => h.id === habitId);
+    const prevVictory = habitStorage.getWeeklyVictoryStatus(selectedDate);
     const { completed } = habitStorage.toggleCompletion(habitId, selectedDate);
+    const newVictory = habitStorage.getWeeklyVictoryStatus(selectedDate);
 
     if (completed && habit) {
       // Physical haptic vibration
@@ -114,17 +154,23 @@ export default function App() {
         date: selectedDate,
       });
 
-      // Check if all habits for selectedDate are now done -> trigger confetti!
-      const updatedLogs = habitStorage.getLogs().filter((l) => l.date === selectedDate);
-      if (updatedLogs.length === activeHabits.length && activeHabits.length > 0) {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        soundManager.playCelebrationChime();
-        confetti({
-          particleCount: 75,
-          spread: 65,
-          origin: { y: 0.65 },
-          colors: ['#D8F22A', '#141414', '#FF5C00', '#3B82F6'],
-        });
+      // Check if this completion unlocked a Weekly Victory!
+      if (!prevVictory.isVictory && newVictory.isVictory) {
+        setVictoryDismissed(false);
+        fireVictoryConfetti();
+      } else {
+        // Daily completion check
+        const updatedLogs = habitStorage.getLogs().filter((l) => l.date === selectedDate);
+        if (updatedLogs.length === activeHabits.length && activeHabits.length > 0) {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          soundManager.playCelebrationChime();
+          confetti({
+            particleCount: 75,
+            spread: 65,
+            origin: { y: 0.65 },
+            colors: ['#D8F22A', '#141414', '#FF5C00', '#3B82F6'],
+          });
+        }
       }
     } else if (habit) {
       // Light haptic pulse on untoggle/reset
@@ -135,7 +181,7 @@ export default function App() {
         date: selectedDate,
       });
     }
-  }, [habits, selectedDate, activeHabits.length]);
+  }, [habits, selectedDate, activeHabits.length, fireVictoryConfetti]);
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -159,6 +205,7 @@ export default function App() {
       // 'n' for New Habit
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
+        setAddModalInitialValues(null);
         setIsAddModalOpen(true);
         return;
       }
@@ -205,6 +252,34 @@ export default function App() {
 
   const handleAddHabit = (newHabitData: Omit<MicroHabit, 'id' | 'createdAt' | 'orderIndex' | 'archived'>) => {
     habitStorage.addHabit(newHabitData);
+  };
+
+  const handleApplyAiSuggestion = async (suggestion: AiHabitSuggestion) => {
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    soundManager.playCelebrationChime();
+    handleAddHabit({
+      title: suggestion.title,
+      cue: suggestion.cue,
+      timeEstimate: suggestion.timeEstimate,
+      color: suggestion.color || '#D8F22A',
+      icon: suggestion.icon || 'Sparkles',
+    });
+    setUndoState({
+      message: `KI-Habit „${suggestion.title}“ hinzugefügt!`,
+      habitId: '',
+      date: selectedDate,
+    });
+  };
+
+  const handleCustomizeAiSuggestion = (suggestion: AiHabitSuggestion) => {
+    setAddModalInitialValues({
+      title: suggestion.title,
+      cue: suggestion.cue,
+      timeEstimate: suggestion.timeEstimate,
+      color: suggestion.color || '#D8F22A',
+    });
+    setIsAddModalOpen(true);
   };
 
   const handleSaveEdit = (id: string, updates: Partial<MicroHabit>) => {
@@ -358,7 +433,10 @@ export default function App() {
           {/* Primary Action Button */}
           <button
             type="button"
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              setAddModalInitialValues(null);
+              setIsAddModalOpen(true);
+            }}
             className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#D8F22A] text-zinc-950 font-bold text-xs border-2 border-zinc-900 dark:border-zinc-700 shadow-[3px_3px_0px_#141414] dark:shadow-[3px_3px_0px_#27272a] hover:bg-lime-300 active:translate-x-[1px] active:translate-y-[1px] whitespace-nowrap cursor-pointer ml-1"
           >
             <Plus className="w-3.5 h-3.5 stroke-[3]" />
@@ -391,6 +469,23 @@ export default function App() {
 
           {/* Quick Date Shortcuts & Consistency Score Quick-Tab */}
           <div className="flex items-center gap-2">
+            {/* Victory Badge if achieved */}
+            {weeklyVictory.isVictory && (
+              <button
+                type="button"
+                onClick={() => {
+                  setVictoryDismissed(false);
+                  fireVictoryConfetti();
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-zinc-900 dark:border-zinc-700 bg-[#D8F22A] text-zinc-950 font-mono-numbers text-xs font-bold shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] hover:bg-lime-300 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+                title="Wöchentliche Victory anzeigen und feiern"
+              >
+                <Trophy className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span className="hidden sm:inline">Victory aktiv! 🏆</span>
+                <span className="sm:hidden">🏆 7 Tage</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setSelectedDate(today)}
@@ -415,7 +510,17 @@ export default function App() {
 
         {/* Tab 1: Today Web Dashboard View */}
         {activeTab === 'today' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="space-y-6">
+            {/* Wöchentliche Victory Nachricht & Feier-Banner */}
+            {weeklyVictory.isVictory && !victoryDismissed && (
+              <WeeklyVictoryCard
+                victory={weeklyVictory}
+                onFireConfetti={fireVictoryConfetti}
+                onDismiss={() => setVictoryDismissed(true)}
+              />
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Habits Column (7 cols) */}
             <div className="lg:col-span-7 space-y-4">
               {/* Daily Progress Kicker & Filter Controls */}
@@ -554,8 +659,19 @@ export default function App() {
               </div>
             </div>
 
-            {/* Sidebar Column: Compact Monthly Matrix & Live Widget Card (5 cols) */}
+            {/* Sidebar Column: AI Habit Discover & Compact Monthly Matrix (5 cols) */}
             <div className="lg:col-span-5 space-y-6">
+              {/* KI-Entdecken Bereich: 1-Klick Micro-Habit Empfehlung */}
+              <AiHabitSuggestionCard
+                currentHabits={habits}
+                onAddHabit={handleApplyAiSuggestion}
+                onCustomizeHabit={handleCustomizeAiSuggestion}
+                onHapticFeedback={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  soundManager.playTactileClick();
+                }}
+              />
+
               <MonthlyScoreCard
                 consistency={consistency}
                 habits={habits}
@@ -593,6 +709,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         )}
@@ -654,6 +771,13 @@ export default function App() {
         {/* Tab 3: Weekday Rhythm Analysis */}
         {activeTab === 'rhythm' && (
           <div className="space-y-6">
+            {weeklyVictory.isVictory && (
+              <WeeklyVictoryCard
+                victory={weeklyVictory}
+                onFireConfetti={fireVictoryConfetti}
+              />
+            )}
+
             <div className="bg-white dark:bg-zinc-900 border-2 border-zinc-900 dark:border-zinc-700 p-5 shadow-[4px_4px_0px_#141414] dark:shadow-[4px_4px_0px_#27272a]">
               <span className="text-[11px] font-mono-numbers uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-bold block mb-1">
                 Wochen-Verhaltensmuster
@@ -750,8 +874,12 @@ export default function App() {
       {/* Add Habit Modal */}
       <AddHabitModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setAddModalInitialValues(null);
+        }}
         onAdd={handleAddHabit}
+        initialValues={addModalInitialValues}
       />
 
       {/* Edit Habit Modal */}

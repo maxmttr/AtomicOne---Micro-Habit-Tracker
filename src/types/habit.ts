@@ -50,3 +50,36 @@ export interface MonthlyConsistency {
   weekdayStats: WeekdayStat[];
   bestWeekday: string;
 }
+
+export interface WeeklyVictoryDay {
+  date: string;
+  weekdayName: string;
+  completedCount: number;
+  totalHabits: number;
+  percentage: number;
+  passed: boolean;
+}
+
+export interface WeeklyVictoryStatus {
+  isVictory: boolean;
+  qualifyingDaysCount: number;
+  totalDays: number;
+  startDate: string;
+  endDate: string;
+  dateRangeLabel: string;
+  days: WeeklyVictoryDay[];
+  averagePercentage: number;
+}
+
+export interface AiHabitSuggestion {
+  title: string;           // z. B. "1 Glas Wasser vor dem Kaffee"
+  cue: string;             // Physischer Trigger, z. B. "Sobald die Kaffeemaschine läuft"
+  timeEstimate: string;    // z. B. "30 Sek" oder "1 Min"
+  category: string;        // z. B. "Vitalität & Körper", "Klarheit & Fokus", "Ruhe & Balance"
+  color: string;           // Neo-Brutalist Farbakzent (z. B. #D8F22A, #A78BFA, #38BDF8)
+  icon: string;            // Icon Identifier
+  rationale: string;       // Begründung: Warum das zu den bestehenden Habits passt
+  missingDomain: string;   // Erkannte Lücke / Fokusbereich
+}
+
+
