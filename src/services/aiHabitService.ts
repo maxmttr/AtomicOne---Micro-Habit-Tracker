@@ -10,6 +10,7 @@ const LOCAL_FALLBACKS: AiHabitSuggestion[] = [
     icon: 'droplet',
     rationale: 'Rehydriert deinen Organismus sofort nach dem Schlaf und bringt den Stoffwechsel in Schwung, bevor du zum Koffein greifst.',
     missingDomain: 'Hydration & Morgenenergie',
+    timeWindow: 'morning',
   },
   {
     title: '3 tiefe Bauchatemzüge nehmen',
@@ -20,6 +21,7 @@ const LOCAL_FALLBACKS: AiHabitSuggestion[] = [
     icon: 'feather',
     rationale: 'Aktiviert den Parasympathikus und senkt die Cortisol-Reaktion, bevor der Arbeitsfokus beginnt.',
     missingDomain: 'Stressreduktion & Achtsamkeit',
+    timeWindow: 'midday',
   },
   {
     title: 'Schreibtisch von 1 Sache befreien',
@@ -30,6 +32,7 @@ const LOCAL_FALLBACKS: AiHabitSuggestion[] = [
     icon: 'zap',
     rationale: 'Schafft einen klaren visuellen Abschluss des Arbeitstages und minimiert morgendlichen mentalen Widerstand.',
     missingDomain: 'Fokusumgebung & Klarheit',
+    timeWindow: 'evening',
   },
   {
     title: '1 Sache notieren, die heute gut war',
@@ -40,6 +43,7 @@ const LOCAL_FALLBACKS: AiHabitSuggestion[] = [
     icon: 'smile',
     rationale: 'Trainiert das Gehirn auf positive Selbstwirksamkeit und schließt den Tag mit mentaler Zufriedenheit ab.',
     missingDomain: 'Dankbarkeit & Mindset',
+    timeWindow: 'evening',
   },
   {
     title: 'Kurze Waden- & Nackendehnung',
@@ -50,6 +54,7 @@ const LOCAL_FALLBACKS: AiHabitSuggestion[] = [
     icon: 'activity',
     rationale: 'Nutzt ungenutzte Wartezeiten für sanfte körperliche Entlastung ohne jeglichen zusätzlichen Zeitaufwand.',
     missingDomain: 'Körperausgleich & Haltung',
+    timeWindow: 'midday',
   },
 ];
 

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { MicroHabit } from '../types/habit';
+import { MicroHabit, TimeWindow, TIME_WINDOW_META } from '../types/habit';
 import { X, Check } from 'lucide-react';
 
 interface EditHabitModalProps {
@@ -15,6 +15,8 @@ interface EditHabitModalProps {
 }
 
 const COLORS = ['#D8F22A', '#FF5C00', '#3B82F6', '#10B981', '#A855F7', '#F43F5E'];
+
+const TIME_WINDOWS: TimeWindow[] = ['morning', 'midday', 'evening', 'anytime'];
 
 export const EditHabitModal: React.FC<EditHabitModalProps> = ({
   habit,
@@ -27,6 +29,7 @@ export const EditHabitModal: React.FC<EditHabitModalProps> = ({
   const [timeEstimate, setTimeEstimate] = useState('1 min');
   const [color, setColor] = useState('#D8F22A');
   const [reminderTime, setReminderTime] = useState('');
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>('anytime');
 
   useEffect(() => {
     if (habit) {
@@ -35,6 +38,7 @@ export const EditHabitModal: React.FC<EditHabitModalProps> = ({
       setTimeEstimate(habit.timeEstimate);
       setColor(habit.color);
       setReminderTime(habit.reminderTime || '');
+      setTimeWindow(habit.timeWindow || 'anytime');
     }
   }, [habit]);
 
@@ -50,6 +54,7 @@ export const EditHabitModal: React.FC<EditHabitModalProps> = ({
       timeEstimate,
       color,
       reminderTime: reminderTime.trim() || undefined,
+      timeWindow,
     });
 
     onClose();
@@ -158,6 +163,42 @@ export const EditHabitModal: React.FC<EditHabitModalProps> = ({
                 />
               ))}
             </div>
+          </div>
+
+          {/* Time Window (Zeitfenster im Tagesverlauf) */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block">
+                Zeitfenster im Tagesverlauf (optional)
+              </label>
+              <span className="text-[10px] font-mono-numbers text-zinc-500 dark:text-zinc-400">
+                Für Tagesverlauf-Sortierung
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {TIME_WINDOWS.map((tw) => {
+                const meta = TIME_WINDOW_META[tw];
+                const isSelected = timeWindow === tw;
+                return (
+                  <button
+                    key={tw}
+                    type="button"
+                    onClick={() => setTimeWindow(tw)}
+                    className={`flex items-center justify-center gap-1.5 py-2 px-2.5 text-xs font-bold font-mono-numbers border-2 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-zinc-900 dark:border-zinc-100 bg-[#D8F22A] text-zinc-950 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#f4f4f5]'
+                        : 'border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 shadow-[1px_1px_0px_#141414] dark:shadow-[1px_1px_0px_#27272a]'
+                    }`}
+                  >
+                    <span>{meta.emoji}</span>
+                    <span>{meta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">
+              {TIME_WINDOW_META[timeWindow].description}
+            </p>
           </div>
 
           {/* Actions */}

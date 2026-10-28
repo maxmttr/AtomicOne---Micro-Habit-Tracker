@@ -5,8 +5,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
-import { MicroHabit, HabitExecution, MonthlyConsistency, WeeklyVictoryStatus, AiHabitSuggestion } from './types/habit';
-import { habitStorage } from './services/habitStorage';
+import { MicroHabit, HabitExecution, MonthlyConsistency, WeeklyVictoryStatus, AiHabitSuggestion, TimeWindow, TIME_WINDOW_META } from './types/habit';
+import { habitStorage, sortHabitsByTimeWindow } from './services/habitStorage';
 import { soundManager } from './utils/audio';
 import { Haptics } from './utils/haptics';
 import { getTodayDateString, getCurrentYearMonth, formatDateGerman, formatShortDate } from './utils/date';
@@ -38,6 +38,8 @@ import {
   TrendingUp,
   X,
   ArrowRight,
+  ArrowUpDown,
+  SunMedium,
 } from 'lucide-react';
 
 export default function App() {
@@ -47,8 +49,10 @@ export default function App() {
   const [activeYearMonth, setActiveYearMonth] = useState<string>(getCurrentYearMonth());
   const [activeTab, setActiveTab] = useState<'today' | 'monthly' | 'rhythm' | 'settings'>('today');
   const [filterMode, setFilterMode] = useState<'all' | 'pending' | 'completed'>('all');
+  const [timeWindowFilter, setTimeWindowFilter] = useState<'all' | TimeWindow>('all');
+  const [sortByDaytime, setSortByDaytime] = useState<boolean>(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [addModalInitialValues, setAddModalInitialValues] = useState<{ title?: string; cue?: string; timeEstimate?: string; color?: string } | null>(null);
+  const [addModalInitialValues, setAddModalInitialValues] = useState<{ title?: string; cue?: string; timeEstimate?: string; color?: string; timeWindow?: TimeWindow } | null>(null);
   const [editingHabit, setEditingHabit] = useState<MicroHabit | null>(null);
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -92,13 +96,23 @@ export default function App() {
     .filter((l) => l.date === selectedDate)
     .map((l) => l.habitId);
 
+  // Order active habits according to sort preference (Tagesverlauf vs. Manuell)
+  const orderedActiveHabits = sortByDaytime ? sortHabitsByTimeWindow(activeHabits) : activeHabits;
+
   // Filtered habits for Today list
-  const displayedHabits = activeHabits.filter((h) => {
+  const displayedHabits = orderedActiveHabits.filter((h) => {
     const isDone = completedIdsForSelectedDate.includes(h.id);
-    if (filterMode === 'pending') return !isDone;
-    if (filterMode === 'completed') return isDone;
+    if (filterMode === 'pending' && isDone) return false;
+    if (filterMode === 'completed' && !isDone) return false;
+    if (timeWindowFilter !== 'all' && (h.timeWindow || 'anytime') !== timeWindowFilter) return false;
     return true;
   });
+
+  // Time window counts
+  const morningCount = activeHabits.filter((h) => (h.timeWindow || 'anytime') === 'morning').length;
+  const middayCount = activeHabits.filter((h) => (h.timeWindow || 'anytime') === 'midday').length;
+  const eveningCount = activeHabits.filter((h) => (h.timeWindow || 'anytime') === 'evening').length;
+  const anytimeCount = activeHabits.filter((h) => (h.timeWindow || 'anytime') === 'anytime').length;
 
   // Consistency for active month
   const consistency: MonthlyConsistency = habitStorage.getMonthlyConsistency(activeYearMonth);
@@ -264,6 +278,7 @@ export default function App() {
       timeEstimate: suggestion.timeEstimate,
       color: suggestion.color || '#D8F22A',
       icon: suggestion.icon || 'Sparkles',
+      timeWindow: suggestion.timeWindow || 'anytime',
     });
     setUndoState({
       message: `KI-Habit „${suggestion.title}“ hinzugefügt!`,
@@ -278,6 +293,7 @@ export default function App() {
       cue: suggestion.cue,
       timeEstimate: suggestion.timeEstimate,
       color: suggestion.color || '#D8F22A',
+      timeWindow: suggestion.timeWindow || 'anytime',
     });
     setIsAddModalOpen(true);
   };
@@ -333,123 +349,168 @@ export default function App() {
         Top Bar Contract:
         [Brand title, one line] — [4–5 nav links, 1–2 word labels, single-line] — [1 primary action]
       */}
-      <header className="sticky top-0 z-40 bg-[#FAF9F5] dark:bg-zinc-900 border-b-2 border-zinc-900 dark:border-zinc-700 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-8">
-        {/* Zone 1: Brand Wordmark */}
-        <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
-          <div className="w-4 h-4 bg-[#D8F22A] border-2 border-zinc-900 dark:border-zinc-600 shadow-[1px_1px_0px_#141414] dark:shadow-[1px_1px_0px_#27272a]" />
-          <span className="text-lg font-black tracking-tighter text-zinc-900 dark:text-zinc-100">
-            ATOMIC/ONE
-          </span>
-          <span className="hidden sm:inline-block text-[10px] font-mono-numbers text-zinc-500 dark:text-zinc-400 font-bold ml-1">
-            WEB-APP
-          </span>
-        </div>
+      <header className="sticky top-0 z-40 bg-[#FAF9F5] dark:bg-zinc-900 border-b-2 border-zinc-900 dark:border-zinc-700 px-3 sm:px-8 py-2.5 sm:py-3.5">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-2.5 md:gap-8">
+          {/* Top Row on Mobile: Brand on Left, Quick Actions on Right */}
+          <div className="flex items-center justify-between w-full md:w-auto">
+            {/* Zone 1: Brand Wordmark */}
+            <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
+              <div className="w-4 h-4 bg-[#D8F22A] border-2 border-zinc-900 dark:border-zinc-600 shadow-[1px_1px_0px_#141414] dark:shadow-[1px_1px_0px_#27272a]" />
+              <span className="text-base sm:text-lg font-black tracking-tighter text-zinc-900 dark:text-zinc-100">
+                ATOMIC/ONE
+              </span>
+              <span className="hidden sm:inline-block text-[10px] font-mono-numbers text-zinc-500 dark:text-zinc-400 font-bold ml-1">
+                WEB-APP
+              </span>
+            </div>
 
-        {/* Zone 2: Navigation Links */}
-        <nav className="flex items-center gap-4 sm:gap-7 text-xs font-bold font-mono-numbers">
-          <button
-            type="button"
-            onClick={() => setActiveTab('today')}
-            className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer py-1 ${
-              activeTab === 'today'
-                ? 'text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-[#D8F22A] font-extrabold'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            Heute
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('monthly')}
-            className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer py-1 ${
-              activeTab === 'monthly'
-                ? 'text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-[#D8F22A] font-extrabold'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            Monats-Matrix
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('rhythm')}
-            className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer py-1 flex items-center gap-1 ${
-              activeTab === 'rhythm'
-                ? 'text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-[#D8F22A] font-extrabold'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            <TrendingUp className="w-3.5 h-3.5" />
-            Wochen-Rhythmus
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('settings')}
-            className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer py-1 flex items-center gap-1 ${
-              activeTab === 'settings'
-                ? 'text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-[#D8F22A] font-extrabold'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            Einstellungen
-          </button>
-        </nav>
+            {/* Mobile Actions Bar (Visible only on < md screens) */}
+            <div className="flex items-center gap-1.5 md:hidden shrink-0">
+              {/* Dark Mode Toggle */}
+              <button
+                type="button"
+                onClick={handleToggleTheme}
+                title={isDark ? 'Light Mode aktivieren' : 'Dark Mode aktivieren'}
+                className="w-7 h-7 flex items-center justify-center border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-[1.5px_1.5px_0px_#141414] dark:shadow-[1.5px_1.5px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+                aria-label="Design-Modus umschalten"
+              >
+                {isDark ? <Sun className="w-3.5 h-3.5 text-[#D8F22A]" /> : <Moon className="w-3.5 h-3.5 text-zinc-900" />}
+              </button>
 
-        {/* Zone 3: Controls + primary action */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Keyboard Shortcuts Hint */}
-          <button
-            type="button"
-            onClick={() => setIsShortcutsModalOpen(true)}
-            title="Tastenkombinationen anzeigen (?)"
-            className="hidden md:flex w-8 h-8 items-center justify-center border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
-            aria-label="Tastenkürzel"
-          >
-            <Keyboard className="w-3.5 h-3.5" />
-          </button>
+              {/* Sound Toggle */}
+              <button
+                type="button"
+                onClick={handleToggleMute}
+                title={isMuted ? 'Ton aktivieren' : 'Ton stummschalten'}
+                className="w-7 h-7 flex items-center justify-center border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-[1.5px_1.5px_0px_#141414] dark:shadow-[1.5px_1.5px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+                aria-label="Sound umschalten"
+              >
+                {isMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" /> : <Volume2 className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />}
+              </button>
 
-          {/* Dark Mode Toggle */}
-          <button
-            type="button"
-            onClick={handleToggleTheme}
-            title={isDark ? 'Light Mode aktivieren' : 'Dark Mode aktivieren'}
-            className="w-8 h-8 flex items-center justify-center border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
-            aria-label="Design-Modus umschalten"
-          >
-            {isDark ? <Sun className="w-3.5 h-3.5 text-[#D8F22A]" /> : <Moon className="w-3.5 h-3.5 text-zinc-900" />}
-          </button>
+              {/* Primary Action Button (+ Neu) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setAddModalInitialValues(null);
+                  setIsAddModalOpen(true);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 bg-[#D8F22A] text-zinc-950 font-black text-xs border-2 border-zinc-900 dark:border-zinc-700 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ml-0.5"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span>Neu</span>
+              </button>
+            </div>
+          </div>
 
-          {/* Sound Toggle */}
-          <button
-            type="button"
-            onClick={handleToggleMute}
-            title={isMuted ? 'Ton aktivieren' : 'Ton stummschalten'}
-            className="w-8 h-8 flex items-center justify-center border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
-            aria-label="Sound umschalten"
-          >
-            {isMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" /> : <Volume2 className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />}
-          </button>
+          {/* Zone 2: Navigation Links (Row 2 on Mobile, Inline on Desktop) */}
+          <nav className="flex items-center justify-between md:justify-start gap-1 sm:gap-4 md:gap-7 text-xs font-bold font-mono-numbers border-t border-zinc-200 dark:border-zinc-800 md:border-t-0 pt-1.5 md:pt-0 overflow-x-auto scrollbar-none w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab('today')}
+              className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer py-1 px-1.5 sm:px-0 ${
+                activeTab === 'today'
+                  ? 'text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-[#D8F22A] font-extrabold'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+              }`}
+            >
+              Heute
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('monthly')}
+              className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer py-1 px-1.5 sm:px-0 ${
+                activeTab === 'monthly'
+                  ? 'text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-[#D8F22A] font-extrabold'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+              }`}
+            >
+              <span className="hidden sm:inline">Monats-Matrix</span>
+              <span className="sm:hidden">Matrix</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('rhythm')}
+              className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer py-1 px-1.5 sm:px-0 flex items-center gap-1 ${
+                activeTab === 'rhythm'
+                  ? 'text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-[#D8F22A] font-extrabold'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Wochen-Rhythmus</span>
+              <span className="sm:hidden">Rhythmus</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('settings')}
+              className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer py-1 px-1.5 sm:px-0 flex items-center gap-1 ${
+                activeTab === 'settings'
+                  ? 'text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-[#D8F22A] font-extrabold'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Einstellungen</span>
+              <span className="sm:hidden">Optionen</span>
+            </button>
+          </nav>
 
-          {/* Primary Action Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setAddModalInitialValues(null);
-              setIsAddModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#D8F22A] text-zinc-950 font-bold text-xs border-2 border-zinc-900 dark:border-zinc-700 shadow-[3px_3px_0px_#141414] dark:shadow-[3px_3px_0px_#27272a] hover:bg-lime-300 active:translate-x-[1px] active:translate-y-[1px] whitespace-nowrap cursor-pointer ml-1"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span className="hidden sm:inline">Neuer Habit</span>
-            <span className="sm:hidden">Neu</span>
-          </button>
+          {/* Zone 3: Controls + primary action (Desktop only) */}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            {/* Keyboard Shortcuts Hint */}
+            <button
+              type="button"
+              onClick={() => setIsShortcutsModalOpen(true)}
+              title="Tastenkombinationen anzeigen (?)"
+              className="w-8 h-8 flex items-center justify-center border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+              aria-label="Tastenkürzel"
+            >
+              <Keyboard className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Dark Mode Toggle */}
+            <button
+              type="button"
+              onClick={handleToggleTheme}
+              title={isDark ? 'Light Mode aktivieren' : 'Dark Mode aktivieren'}
+              className="w-8 h-8 flex items-center justify-center border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+              aria-label="Design-Modus umschalten"
+            >
+              {isDark ? <Sun className="w-3.5 h-3.5 text-[#D8F22A]" /> : <Moon className="w-3.5 h-3.5 text-zinc-900" />}
+            </button>
+
+            {/* Sound Toggle */}
+            <button
+              type="button"
+              onClick={handleToggleMute}
+              title={isMuted ? 'Ton aktivieren' : 'Ton stummschalten'}
+              className="w-8 h-8 flex items-center justify-center border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+              aria-label="Sound umschalten"
+            >
+              {isMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" /> : <Volume2 className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />}
+            </button>
+
+            {/* Primary Action Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setAddModalInitialValues(null);
+                setIsAddModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#D8F22A] text-zinc-950 font-bold text-xs border-2 border-zinc-900 dark:border-zinc-700 shadow-[3px_3px_0px_#141414] dark:shadow-[3px_3px_0px_#27272a] hover:bg-lime-300 active:translate-x-[1px] active:translate-y-[1px] whitespace-nowrap cursor-pointer ml-1"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              <span>Neuer Habit</span>
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Web App Viewport */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-8">
         {/* Sub-Header Banner with Quick Day Selector */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between pb-5 mb-6 border-b-2 border-zinc-300 dark:border-zinc-800 gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 sm:pb-5 mb-5 sm:mb-6 border-b-2 border-zinc-300 dark:border-zinc-800 gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-mono-numbers text-zinc-500 dark:text-zinc-400 font-bold mb-1">
               <span>{formatDateGerman(selectedDate)}</span>
@@ -459,7 +520,7 @@ export default function App() {
                 </span>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">
               {activeTab === 'today' && 'Tägliche Micro-Ziele'}
               {activeTab === 'monthly' && 'Monatliche Konsistenz-Matrix'}
               {activeTab === 'rhythm' && 'Wochen-Rhythmus Analyse'}
@@ -468,7 +529,7 @@ export default function App() {
           </div>
 
           {/* Quick Date Shortcuts & Consistency Score Quick-Tab */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Victory Badge if achieved */}
             {weeklyVictory.isVictory && (
               <button
@@ -559,47 +620,130 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Filter Bar */}
-                <div className="flex items-center justify-between pt-2.5 border-t border-zinc-200 dark:border-zinc-800 text-xs font-mono-numbers">
-                  <div className="flex items-center gap-1.5">
+                {/* Filter & Sort Controls */}
+                <div className="space-y-2.5 pt-3 border-t border-zinc-200 dark:border-zinc-800 text-xs font-mono-numbers">
+                  {/* Row 1: Status Filters & Daytime Sort Toggle */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setFilterMode('all')}
+                        className={`px-2.5 py-1 border border-zinc-900 dark:border-zinc-700 font-bold transition-colors cursor-pointer ${
+                          filterMode === 'all'
+                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950'
+                            : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                        }`}
+                      >
+                        Alle ({activeHabits.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterMode('pending')}
+                        className={`px-2.5 py-1 border border-zinc-900 dark:border-zinc-700 font-bold transition-colors cursor-pointer ${
+                          filterMode === 'pending'
+                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950'
+                            : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                        }`}
+                      >
+                        Offen ({activeHabits.length - todayCompletedCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilterMode('completed')}
+                        className={`px-2.5 py-1 border border-zinc-900 dark:border-zinc-700 font-bold transition-colors cursor-pointer ${
+                          filterMode === 'completed'
+                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950'
+                            : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                        }`}
+                      >
+                        Erledigt ({todayCompletedCount})
+                      </button>
+                    </div>
+
+                    {/* Daytime Sort Toggle */}
                     <button
                       type="button"
-                      onClick={() => setFilterMode('all')}
-                      className={`px-2.5 py-1 border border-zinc-900 dark:border-zinc-700 font-bold transition-colors cursor-pointer ${
-                        filterMode === 'all'
-                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950'
-                          : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                      onClick={() => {
+                        soundManager.playTactileClick();
+                        setSortByDaytime((prev) => !prev);
+                      }}
+                      title={sortByDaytime ? 'Sortierung: Nach Tagesverlauf (Morgens ➔ Abends)' : 'Sortierung: Manuelle Anordnung'}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 border border-zinc-900 dark:border-zinc-700 font-bold transition-all cursor-pointer ${
+                        sortByDaytime
+                          ? 'bg-[#D8F22A] text-zinc-950 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a]'
+                          : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 shadow-[1px_1px_0px_#141414]'
                       }`}
                     >
-                      Alle ({activeHabits.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilterMode('pending')}
-                      className={`px-2.5 py-1 border border-zinc-900 dark:border-zinc-700 font-bold transition-colors cursor-pointer ${
-                        filterMode === 'pending'
-                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950'
-                          : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
-                      }`}
-                    >
-                      Offen ({activeHabits.length - todayCompletedCount})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilterMode('completed')}
-                      className={`px-2.5 py-1 border border-zinc-900 dark:border-zinc-700 font-bold transition-colors cursor-pointer ${
-                        filterMode === 'completed'
-                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950'
-                          : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
-                      }`}
-                    >
-                      Erledigt ({todayCompletedCount})
+                      <ArrowUpDown className="w-3 h-3 stroke-[2.5]" />
+                      <span>{sortByDaytime ? 'Tagesverlauf 🌅➔🌙' : 'Manuell ↕️'}</span>
                     </button>
                   </div>
 
-                  <span className="hidden sm:inline-block text-[11px] text-zinc-500 dark:text-zinc-400">
-                    Tasten <code className="bg-zinc-200 dark:bg-zinc-700 px-1 py-0.5 border border-zinc-400 dark:border-zinc-600">[1-{activeHabits.length}]</code> zum Umschalten
-                  </span>
+                  {/* Row 2: Zeitfenster Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-dashed border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mr-1">
+                      Zeitfenster:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTimeWindowFilter('all')}
+                      className={`px-2 py-0.5 border text-[11px] font-bold transition-colors cursor-pointer ${
+                        timeWindowFilter === 'all'
+                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-zinc-900 dark:border-zinc-100'
+                          : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      Alle Zeiten
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTimeWindowFilter('morning')}
+                      className={`px-2 py-0.5 border text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                        timeWindowFilter === 'morning'
+                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-zinc-900 dark:border-zinc-100'
+                          : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      <span>🌅</span>
+                      <span>Morgens ({morningCount})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTimeWindowFilter('midday')}
+                      className={`px-2 py-0.5 border text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                        timeWindowFilter === 'midday'
+                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-zinc-900 dark:border-zinc-100'
+                          : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      <span>☀️</span>
+                      <span>Mittags ({middayCount})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTimeWindowFilter('evening')}
+                      className={`px-2 py-0.5 border text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                        timeWindowFilter === 'evening'
+                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-zinc-900 dark:border-zinc-100'
+                          : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      <span>🌙</span>
+                      <span>Abends ({eveningCount})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTimeWindowFilter('anytime')}
+                      className={`px-2 py-0.5 border text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                        timeWindowFilter === 'anytime'
+                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-zinc-900 dark:border-zinc-100'
+                          : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      <span>⚡</span>
+                      <span>Flexibel ({anytimeCount})</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -609,39 +753,74 @@ export default function App() {
                   <div className="bg-white dark:bg-zinc-900 border-2 border-zinc-900 dark:border-zinc-700 p-8 text-center shadow-[4px_4px_0px_#141414] dark:shadow-[4px_4px_0px_#27272a]">
                     <Sparkles className="w-8 h-8 text-zinc-400 dark:text-zinc-500 mx-auto mb-2" />
                     <h3 className="font-bold text-zinc-900 dark:text-zinc-100">
-                      {filterMode === 'pending' ? 'Alle Micro-Ziele für heute erledigt!' : 'Keine Habits gefunden'}
+                      {filterMode === 'pending'
+                        ? 'Alle Micro-Ziele für diese Auswahl erledigt!'
+                        : timeWindowFilter !== 'all'
+                        ? `Keine Habits im Zeitfenster „${TIME_WINDOW_META[timeWindowFilter].label}“`
+                        : 'Keine Habits gefunden'}
                     </h3>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-4">
                       {filterMode === 'pending'
                         ? 'Großartige Arbeit! Schau dir deine monatliche Konsistenz-Matrix an.'
+                        : timeWindowFilter !== 'all'
+                        ? 'Lege einen neuen Habit für diese Tageszeit an oder wechsle zu „Alle Zeiten“.'
                         : 'Erstelle jetzt deinen ersten 1-Minuten Micro-Habit.'}
                     </p>
-                    {filterMode !== 'pending' && (
-                      <button
-                        type="button"
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="px-4 py-2 bg-[#D8F22A] text-zinc-950 border-2 border-zinc-900 dark:border-zinc-700 font-bold text-xs shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] cursor-pointer"
-                      >
-                        + Ersten Habit anlegen
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddModalInitialValues({
+                          timeWindow: timeWindowFilter !== 'all' ? timeWindowFilter : 'morning',
+                        });
+                        setIsAddModalOpen(true);
+                      }}
+                      className="px-4 py-2 bg-[#D8F22A] text-zinc-950 border-2 border-zinc-900 dark:border-zinc-700 font-bold text-xs shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] cursor-pointer"
+                    >
+                      + Habit anlegen
+                    </button>
                   </div>
                 ) : (
-                  displayedHabits.map((habit, idx) => (
-                    <HabitCard
-                      key={habit.id}
-                      habit={habit}
-                      index={idx}
-                      isCompleted={completedIdsForSelectedDate.includes(habit.id)}
-                      onToggle={handleToggleHabit}
-                      onEdit={(h) => setEditingHabit(h)}
-                      onDelete={handleDeleteHabit}
-                      onMoveUp={handleMoveUp}
-                      onMoveDown={handleMoveDown}
-                      canMoveUp={idx > 0}
-                      canMoveDown={idx < displayedHabits.length - 1}
-                    />
-                  ))
+                  displayedHabits.map((habit, idx) => {
+                    const currentWindow = habit.timeWindow || 'anytime';
+                    const prevWindow = idx > 0 ? (displayedHabits[idx - 1].timeWindow || 'anytime') : null;
+                    const isNewWindow = sortByDaytime && timeWindowFilter === 'all' && currentWindow !== prevWindow;
+                    const meta = TIME_WINDOW_META[currentWindow];
+
+                    return (
+                      <React.Fragment key={habit.id}>
+                        {isNewWindow && (
+                          <div className={`flex items-center gap-2 ${idx > 0 ? 'pt-3' : 'pt-1'} pb-0.5`}>
+                            <span className="text-[11px] font-mono-numbers font-black uppercase tracking-wider text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 bg-zinc-200 dark:bg-zinc-800 border border-zinc-900 dark:border-zinc-700 px-2 py-0.5 shadow-xs">
+                              <span>{meta.emoji}</span>
+                              <span>{meta.label}</span>
+                            </span>
+                            <span className="text-[10px] font-mono-numbers text-zinc-500 dark:text-zinc-400">
+                              {meta.description}
+                            </span>
+                            <div className="flex-1 h-px bg-zinc-300 dark:bg-zinc-800" />
+                          </div>
+                        )}
+                        <HabitCard
+                          habit={habit}
+                          index={idx}
+                          isCompleted={completedIdsForSelectedDate.includes(habit.id)}
+                          onToggle={handleToggleHabit}
+                          onEdit={(h) => setEditingHabit(h)}
+                          onDelete={handleDeleteHabit}
+                          onMoveUp={(id) => {
+                            if (sortByDaytime) setSortByDaytime(false);
+                            handleMoveUp(id);
+                          }}
+                          onMoveDown={(id) => {
+                            if (sortByDaytime) setSortByDaytime(false);
+                            handleMoveDown(id);
+                          }}
+                          canMoveUp={idx > 0}
+                          canMoveDown={idx < displayedHabits.length - 1}
+                        />
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </div>
 

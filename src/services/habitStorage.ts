@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MicroHabit, HabitExecution, MonthlyConsistency, WeeklyVictoryStatus, WeeklyVictoryDay } from '../types/habit';
+import { MicroHabit, HabitExecution, MonthlyConsistency, WeeklyVictoryStatus, WeeklyVictoryDay, TimeWindow, TIME_WINDOW_META } from '../types/habit';
 import { getTodayDateString, getCurrentYearMonth, getDaysInMonth, getRollingWeekDays, formatRangeGerman } from '../utils/date';
 
 const STORAGE_KEY_HABITS = 'atomic_habits_v1';
@@ -21,6 +21,7 @@ const DEFAULT_HABITS: MicroHabit[] = [
     createdAt: new Date().toISOString(),
     orderIndex: 0,
     reminderTime: '21:30',
+    timeWindow: 'evening',
   },
   {
     id: 'habit-2',
@@ -33,6 +34,7 @@ const DEFAULT_HABITS: MicroHabit[] = [
     createdAt: new Date().toISOString(),
     orderIndex: 1,
     reminderTime: '07:30',
+    timeWindow: 'morning',
   },
   {
     id: 'habit-3',
@@ -45,6 +47,7 @@ const DEFAULT_HABITS: MicroHabit[] = [
     createdAt: new Date().toISOString(),
     orderIndex: 2,
     reminderTime: '08:00',
+    timeWindow: 'morning',
   },
   {
     id: 'habit-4',
@@ -57,8 +60,33 @@ const DEFAULT_HABITS: MicroHabit[] = [
     createdAt: new Date().toISOString(),
     orderIndex: 3,
     reminderTime: '09:00',
+    timeWindow: 'midday',
   },
 ];
+
+/**
+ * Sorts habits naturally along the daytime progression:
+ * 1. Morgens (morning)
+ * 2. Mittags (midday)
+ * 3. Abends (evening)
+ * 4. Flexibel (anytime / undefined)
+ * Within the same window, maintains orderIndex.
+ */
+export function sortHabitsByTimeWindow(habits: MicroHabit[]): MicroHabit[] {
+  const getWeight = (tw?: TimeWindow): number => {
+    if (!tw) return 4;
+    return TIME_WINDOW_META[tw]?.sortOrder ?? 4;
+  };
+
+  return [...habits].sort((a, b) => {
+    const weightA = getWeight(a.timeWindow);
+    const weightB = getWeight(b.timeWindow);
+    if (weightA !== weightB) {
+      return weightA - weightB;
+    }
+    return (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
+  });
+}
 
 // Generate lively seed executions for the past days of the current month so the consistency score is alive!
 function generateSeedLogs(habits: MicroHabit[]): HabitExecution[] {

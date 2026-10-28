@@ -3,6 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+export type TimeWindow = 'morning' | 'midday' | 'evening' | 'anytime';
+
+export const TIME_WINDOW_META: Record<
+  TimeWindow,
+  { label: string; emoji: string; shortLabel: string; sortOrder: number; description: string }
+> = {
+  morning: { label: 'Morgens', emoji: '🌅', shortLabel: 'Morgens', sortOrder: 1, description: 'Start in den Tag (06:00 – 11:00)' },
+  midday: { label: 'Mittags', emoji: '☀️', shortLabel: 'Mittags', sortOrder: 2, description: 'Mittag & Fokus (11:00 – 16:00)' },
+  evening: { label: 'Abends', emoji: '🌙', shortLabel: 'Abends', sortOrder: 3, description: 'Feierabend & Nacht (16:00 – 23:00)' },
+  anytime: { label: 'Flexibel', emoji: '⚡', shortLabel: 'Flexibel', sortOrder: 4, description: 'Jederzeit im Tagesverlauf' },
+};
+
 export interface MicroHabit {
   id: string;
   title: string;           // z. B. "1 Seite lesen"
@@ -14,6 +26,7 @@ export interface MicroHabit {
   createdAt: string;       // ISO Timestamp
   orderIndex: number;
   reminderTime?: string;   // Optional z. B. "08:00"
+  timeWindow?: TimeWindow; // Optionales Zeitfenster: morgens, mittags, abends, flexibel
 }
 
 export interface HabitExecution {
@@ -80,6 +93,7 @@ export interface AiHabitSuggestion {
   icon: string;            // Icon Identifier
   rationale: string;       // Begründung: Warum das zu den bestehenden Habits passt
   missingDomain: string;   // Erkannte Lücke / Fokusbereich
+  timeWindow?: TimeWindow; // Empfohlenes Zeitfenster (morgens, mittags, abends, anytime)
 }
 
 

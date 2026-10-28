@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { MicroHabit } from '../types/habit';
+import { MicroHabit, TIME_WINDOW_META } from '../types/habit';
 import { soundManager } from '../utils/audio';
 import {
   Check,
@@ -143,6 +143,18 @@ export const HabitCard: React.FC<HabitCardProps> = ({
                 <span className="flex items-center gap-1 font-mono-numbers text-zinc-700 dark:text-zinc-300 text-[11px]">
                   <Bell className="w-3 h-3 text-zinc-500 dark:text-zinc-400" />
                   {habit.reminderTime}
+                </span>
+              </>
+            )}
+            {habit.timeWindow && (
+              <>
+                <span aria-hidden="true" className="text-zinc-400 dark:text-zinc-600">·</span>
+                <span
+                  className="inline-flex items-center gap-1 font-mono-numbers text-[10px] uppercase font-bold px-1.5 py-0.5 border border-zinc-900/30 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200"
+                  title={`Zeitfenster: ${TIME_WINDOW_META[habit.timeWindow]?.description || habit.timeWindow}`}
+                >
+                  <span className="text-[11px]">{TIME_WINDOW_META[habit.timeWindow]?.emoji}</span>
+                  <span>{TIME_WINDOW_META[habit.timeWindow]?.label}</span>
                 </span>
               </>
             )}

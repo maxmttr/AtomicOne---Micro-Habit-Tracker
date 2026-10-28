@@ -1,40 +1,16 @@
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
-
 // server.ts
-var import_express = __toESM(require("express"), 1);
-var import_path = __toESM(require("path"), 1);
-var import_url = require("url");
-var import_vite = require("vite");
-var import_genai = require("@google/genai");
-var import_dotenv = __toESM(require("dotenv"), 1);
-var import_meta = {};
-import_dotenv.default.config();
-var __filename = (0, import_url.fileURLToPath)(import_meta.url);
-var __dirname = import_path.default.dirname(__filename);
-var app = (0, import_express.default)();
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+import { createServer as createViteServer } from "vite";
+import { GoogleGenAI, Type } from "@google/genai";
+import dotenv from "dotenv";
+dotenv.config();
+var __filename = fileURLToPath(import.meta.url);
+var __dirname = path.dirname(__filename);
+var app = express();
 var PORT = process.env.PORT || 3e3;
-app.use(import_express.default.json());
+app.use(express.json());
 var FALLBACK_HABITS = [
   {
     title: "1 Glas stilles Wasser trinken",
@@ -44,7 +20,8 @@ var FALLBACK_HABITS = [
     color: "#38BDF8",
     icon: "droplet",
     rationale: "Rehydriert deinen Organismus sofort nach dem Schlaf und bringt den Stoffwechsel in Schwung, bevor du zum Koffein greifst.",
-    missingDomain: "Hydration & Morgenenergie"
+    missingDomain: "Hydration & Morgenenergie",
+    timeWindow: "morning"
   },
   {
     title: "3 tiefe Bauchatemz\xFCge nehmen",
@@ -54,7 +31,8 @@ var FALLBACK_HABITS = [
     color: "#A78BFA",
     icon: "feather",
     rationale: "Aktiviert den Parasympathikus und senkt die Cortisol-Reaktion, bevor der Arbeitsfokus beginnt.",
-    missingDomain: "Stressreduktion & Achtsamkeit"
+    missingDomain: "Stressreduktion & Achtsamkeit",
+    timeWindow: "midday"
   },
   {
     title: "Schreibtisch von 1 Sache befreien",
@@ -64,7 +42,8 @@ var FALLBACK_HABITS = [
     color: "#D8F22A",
     icon: "zap",
     rationale: "Schafft einen klaren visuellen Abschluss des Arbeitstages und minimiert morgendlichen mentalen Widerstand.",
-    missingDomain: "Fokusumgebung & Klarheit"
+    missingDomain: "Fokusumgebung & Klarheit",
+    timeWindow: "evening"
   },
   {
     title: "1 Sache notieren, die heute gut war",
@@ -74,7 +53,8 @@ var FALLBACK_HABITS = [
     color: "#FB923C",
     icon: "smile",
     rationale: "Trainiert das Gehirn auf positive Selbstwirksamkeit und schlie\xDFt den Tag mit mentaler Zufriedenheit ab.",
-    missingDomain: "Dankbarkeit & Mindset"
+    missingDomain: "Dankbarkeit & Mindset",
+    timeWindow: "evening"
   },
   {
     title: "Kurze Waden- & Nackendehnung",
@@ -84,7 +64,8 @@ var FALLBACK_HABITS = [
     color: "#4ADE80",
     icon: "activity",
     rationale: "Nutzt ungenutzte Wartezeiten f\xFCr sanfte k\xF6rperliche Entlastung ohne jeglichen zus\xE4tzlichen Zeitaufwand.",
-    missingDomain: "K\xF6rperausgleich & Haltung"
+    missingDomain: "K\xF6rperausgleich & Haltung",
+    timeWindow: "midday"
   }
 ];
 app.post("/api/suggest-habit", async (req, res) => {
@@ -96,8 +77,8 @@ app.post("/api/suggest-habit", async (req, res) => {
       const pick = getSmartFallback(currentHabits);
       return res.json({ suggestion: pick, source: "curated_fallback" });
     }
-    const ai = new import_genai.GoogleGenAI({});
-    const existingTitles = currentHabits.map((h) => `\u2022 "${h.title}" (Kopplung: "${h.cue || "keine"}")`).join("\n") || "Noch keine Habits hinterlegt.";
+    const ai = new GoogleGenAI({});
+    const existingTitles = currentHabits.map((h) => `\u2022 "${h.title}" (Kopplung: "${h.cue || "keine"}", Zeitfenster: "${h.timeWindow || "flexibel"}")`).join("\n") || "Noch keine Habits hinterlegt.";
     const prompt = `Du bist ein weltklasse Verhaltenspsychologe und Experte f\xFCr "Atomic Habits" (James Clear / BJ Fogg).
 Der Nutzer nutzt eine radikal minimalistische Micro-Habit App.
 
@@ -111,25 +92,31 @@ Schlage GENAU EINEN hochspezifischen, ultrakompakten Micro-Habit vor:
 - Physischer Trigger / Anker (Habit-Stacking Formel: "Direkt nachdem / sobald ich X tue...").
 - Knackige Begr\xFCndung, warum dies das bestehende Habit-Set optimal erg\xE4nzt.
 - Passender Neo-Brutalist Farbcode (#D8F22A, #FF5C00, #38BDF8, #A78BFA, #4ADE80 oder #FB923C).
-- Passendes Icon (droplet, book-open, activity, zap, feather, coffee, smile, sun, moon).`;
+- Passendes Icon (droplet, book-open, activity, zap, feather, coffee, smile, sun, moon).
+- Passendes Zeitfenster im Tagesverlauf (morning = Morgens, midday = Mittags, evening = Abends, anytime = Flexibel).`;
     const response = await ai.models.generateContent({
       model: "gemini-3.8-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: import_genai.Type.OBJECT,
+          type: Type.OBJECT,
           properties: {
-            title: { type: import_genai.Type.STRING, description: "Knapper, aktiver Titel, z. B. 1 Glas Wasser vor dem Kaffee" },
-            cue: { type: import_genai.Type.STRING, description: "Physischer Anker/Trigger nach der Wenn-Dann-Formel" },
-            timeEstimate: { type: import_genai.Type.STRING, description: "z. B. 30 Sek oder 1 Min" },
-            category: { type: import_genai.Type.STRING, description: "z. B. Vitalit\xE4t & K\xF6rper, Klarheit & Geist, Ruhe & Balance, Alltag & Ordnung" },
-            color: { type: import_genai.Type.STRING, description: "Hexadezimaler Farbakzent" },
-            icon: { type: import_genai.Type.STRING, description: "Icon-Name aus der erlaubten Liste" },
-            rationale: { type: import_genai.Type.STRING, description: "1-2 S\xE4tze, warum dieser Habit die bestehende Routine st\xE4rkt" },
-            missingDomain: { type: import_genai.Type.STRING, description: "Erkannter Lebensbereich / L\xFCcke" }
+            title: { type: Type.STRING, description: "Knapper, aktiver Titel, z. B. 1 Glas Wasser vor dem Kaffee" },
+            cue: { type: Type.STRING, description: "Physischer Anker/Trigger nach der Wenn-Dann-Formel" },
+            timeEstimate: { type: Type.STRING, description: "z. B. 30 Sek oder 1 Min" },
+            category: { type: Type.STRING, description: "z. B. Vitalit\xE4t & K\xF6rper, Klarheit & Geist, Ruhe & Balance, Alltag & Ordnung" },
+            color: { type: Type.STRING, description: "Hexadezimaler Farbakzent" },
+            icon: { type: Type.STRING, description: "Icon-Name aus der erlaubten Liste" },
+            rationale: { type: Type.STRING, description: "1-2 S\xE4tze, warum dieser Habit die bestehende Routine st\xE4rkt" },
+            missingDomain: { type: Type.STRING, description: "Erkannter Lebensbereich / L\xFCcke" },
+            timeWindow: {
+              type: Type.STRING,
+              enum: ["morning", "midday", "evening", "anytime"],
+              description: "Empfohlenes Zeitfenster im Tagesverlauf"
+            }
           },
-          required: ["title", "cue", "timeEstimate", "category", "color", "icon", "rationale", "missingDomain"]
+          required: ["title", "cue", "timeEstimate", "category", "color", "icon", "rationale", "missingDomain", "timeWindow"]
         }
       }
     });
@@ -156,15 +143,15 @@ function getSmartFallback(currentHabits) {
 }
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
-    const vite = await (0, import_vite.createServer)({
+    const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa"
     });
     app.use(vite.middlewares);
   } else {
-    app.use(import_express.default.static(import_path.default.resolve(__dirname, "dist")));
+    app.use(express.static(path.resolve(__dirname, "dist")));
     app.get("*", (_req, res) => {
-      res.sendFile(import_path.default.resolve(__dirname, "dist", "index.html"));
+      res.sendFile(path.resolve(__dirname, "dist", "index.html"));
     });
   }
   app.listen(PORT, () => {

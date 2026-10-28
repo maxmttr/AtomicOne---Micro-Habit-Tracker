@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, RefreshCw, Plus, Check, Clock, Anchor, HelpCircle, Flame, ArrowRight } from 'lucide-react';
-import { MicroHabit, AiHabitSuggestion } from '../types/habit';
+import { MicroHabit, AiHabitSuggestion, TIME_WINDOW_META } from '../types/habit';
 import { fetchAiHabitSuggestion } from '../services/aiHabitService';
 
 interface AiHabitSuggestionCardProps {
@@ -118,6 +118,12 @@ export const AiHabitSuggestionCard: React.FC<AiHabitSuggestionCardProps> = ({
             <span className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-900 dark:border-zinc-700 text-zinc-800 dark:text-zinc-300 font-medium">
               {suggestion.category}
             </span>
+            {suggestion.timeWindow && (
+              <span className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-900 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 font-bold flex items-center gap-1 shadow-xs">
+                <span>{TIME_WINDOW_META[suggestion.timeWindow]?.emoji}</span>
+                <span>{TIME_WINDOW_META[suggestion.timeWindow]?.label}</span>
+              </span>
+            )}
             <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono-numbers">
               Keine Ausrede: &lt; 2 Min.
             </span>

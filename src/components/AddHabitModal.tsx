@@ -4,25 +4,27 @@
  */
 
 import React, { useState } from 'react';
-import { MicroHabit } from '../types/habit';
+import { MicroHabit, TimeWindow, TIME_WINDOW_META } from '../types/habit';
 import { X, Plus, Sparkles, Clock, MapPin } from 'lucide-react';
 
 interface AddHabitModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (habit: Omit<MicroHabit, 'id' | 'createdAt' | 'orderIndex' | 'archived'>) => void;
-  initialValues?: { title?: string; cue?: string; timeEstimate?: string; color?: string } | null;
+  initialValues?: { title?: string; cue?: string; timeEstimate?: string; color?: string; timeWindow?: TimeWindow } | null;
 }
 
-const PRESETS = [
-  { title: '1 Seite Fachbuch lesen', cue: 'Auf dem Schreibtisch', time: '1 min', color: '#D8F22A', icon: 'BookOpen' },
-  { title: '1 Minute dehnen', cue: 'Nach dem Aufstehen', time: '1 min', color: '#FF5C00', icon: 'Activity' },
-  { title: '1 Glas kaltes Wasser', cue: 'Direkt in der Küche', time: '30 sek', color: '#3B82F6', icon: 'Droplets' },
-  { title: '1 Satz Tagebuch schreiben', cue: 'Vor dem Einschlafen', time: '1 min', color: '#10B981', icon: 'Sparkles' },
-  { title: '3 tiefe Bauchatemzüge', cue: 'Vor dem ersten Zoom-Call', time: '30 sek', color: '#A855F7', icon: 'Wind' },
+const PRESETS: Array<{ title: string; cue: string; time: string; color: string; icon: string; timeWindow: TimeWindow }> = [
+  { title: '1 Seite Fachbuch lesen', cue: 'Auf dem Schreibtisch', time: '1 min', color: '#D8F22A', icon: 'BookOpen', timeWindow: 'evening' },
+  { title: '1 Minute dehnen', cue: 'Nach dem Aufstehen', time: '1 min', color: '#FF5C00', icon: 'Activity', timeWindow: 'morning' },
+  { title: '1 Glas kaltes Wasser', cue: 'Direkt in der Küche', time: '30 sek', color: '#3B82F6', icon: 'Droplets', timeWindow: 'morning' },
+  { title: '1 Satz Tagebuch schreiben', cue: 'Vor dem Einschlafen', time: '1 min', color: '#10B981', icon: 'Sparkles', timeWindow: 'evening' },
+  { title: '3 tiefe Bauchatemzüge', cue: 'Vor dem ersten Zoom-Call', time: '30 sek', color: '#A855F7', icon: 'Wind', timeWindow: 'midday' },
 ];
 
 const COLORS = ['#D8F22A', '#FF5C00', '#3B82F6', '#10B981', '#A855F7', '#F43F5E'];
+
+const TIME_WINDOWS: TimeWindow[] = ['morning', 'midday', 'evening', 'anytime'];
 
 export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   isOpen,
@@ -34,6 +36,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   const [cue, setCue] = useState('');
   const [timeEstimate, setTimeEstimate] = useState('1 min');
   const [color, setColor] = useState('#D8F22A');
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>('anytime');
 
   React.useEffect(() => {
     if (initialValues && isOpen) {
@@ -41,11 +44,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
       setCue(initialValues.cue || '');
       setTimeEstimate(initialValues.timeEstimate || '1 min');
       setColor(initialValues.color || '#D8F22A');
+      setTimeWindow(initialValues.timeWindow || 'anytime');
     } else if (!isOpen) {
       setTitle('');
       setCue('');
       setTimeEstimate('1 min');
       setColor('#D8F22A');
+      setTimeWindow('anytime');
     }
   }, [initialValues, isOpen]);
 
@@ -61,10 +66,12 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
       timeEstimate,
       color,
       icon: 'Sparkles',
+      timeWindow,
     });
 
     setTitle('');
     setCue('');
+    setTimeWindow('anytime');
     onClose();
   };
 
@@ -73,6 +80,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
     setCue(p.cue);
     setTimeEstimate(p.time);
     setColor(p.color);
+    setTimeWindow(p.timeWindow);
   };
 
   return (
@@ -191,6 +199,42 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Time Window (Zeitfenster im Tagesverlauf) */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block">
+                Zeitfenster im Tagesverlauf (optional)
+              </label>
+              <span className="text-[10px] font-mono-numbers text-zinc-500 dark:text-zinc-400">
+                Für Tagesverlauf-Sortierung
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {TIME_WINDOWS.map((tw) => {
+                const meta = TIME_WINDOW_META[tw];
+                const isSelected = timeWindow === tw;
+                return (
+                  <button
+                    key={tw}
+                    type="button"
+                    onClick={() => setTimeWindow(tw)}
+                    className={`flex items-center justify-center gap-1.5 py-2 px-2.5 text-xs font-bold font-mono-numbers border-2 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-zinc-900 dark:border-zinc-100 bg-[#D8F22A] text-zinc-950 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#f4f4f5]'
+                        : 'border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 shadow-[1px_1px_0px_#141414] dark:shadow-[1px_1px_0px_#27272a]'
+                    }`}
+                  >
+                    <span>{meta.emoji}</span>
+                    <span>{meta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">
+              {TIME_WINDOW_META[timeWindow].description}
+            </p>
           </div>
 
           {/* Actions */}

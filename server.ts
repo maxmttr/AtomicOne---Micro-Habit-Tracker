@@ -26,6 +26,7 @@ const FALLBACK_HABITS = [
     icon: 'droplet',
     rationale: 'Rehydriert deinen Organismus sofort nach dem Schlaf und bringt den Stoffwechsel in Schwung, bevor du zum Koffein greifst.',
     missingDomain: 'Hydration & Morgenenergie',
+    timeWindow: 'morning',
   },
   {
     title: '3 tiefe Bauchatemzüge nehmen',
@@ -36,6 +37,7 @@ const FALLBACK_HABITS = [
     icon: 'feather',
     rationale: 'Aktiviert den Parasympathikus und senkt die Cortisol-Reaktion, bevor der Arbeitsfokus beginnt.',
     missingDomain: 'Stressreduktion & Achtsamkeit',
+    timeWindow: 'midday',
   },
   {
     title: 'Schreibtisch von 1 Sache befreien',
@@ -46,6 +48,7 @@ const FALLBACK_HABITS = [
     icon: 'zap',
     rationale: 'Schafft einen klaren visuellen Abschluss des Arbeitstages und minimiert morgendlichen mentalen Widerstand.',
     missingDomain: 'Fokusumgebung & Klarheit',
+    timeWindow: 'evening',
   },
   {
     title: '1 Sache notieren, die heute gut war',
@@ -56,6 +59,7 @@ const FALLBACK_HABITS = [
     icon: 'smile',
     rationale: 'Trainiert das Gehirn auf positive Selbstwirksamkeit und schließt den Tag mit mentaler Zufriedenheit ab.',
     missingDomain: 'Dankbarkeit & Mindset',
+    timeWindow: 'evening',
   },
   {
     title: 'Kurze Waden- & Nackendehnung',
@@ -66,6 +70,7 @@ const FALLBACK_HABITS = [
     icon: 'activity',
     rationale: 'Nutzt ungenutzte Wartezeiten für sanfte körperliche Entlastung ohne jeglichen zusätzlichen Zeitaufwand.',
     missingDomain: 'Körperausgleich & Haltung',
+    timeWindow: 'midday',
   },
 ];
 
@@ -82,7 +87,7 @@ app.post('/api/suggest-habit', async (req, res) => {
     }
 
     const ai = new GoogleGenAI({});
-    const existingTitles = currentHabits.map((h: any) => `• "${h.title}" (Kopplung: "${h.cue || 'keine'}")`).join('\n') || 'Noch keine Habits hinterlegt.';
+    const existingTitles = currentHabits.map((h: any) => `• "${h.title}" (Kopplung: "${h.cue || 'keine'}", Zeitfenster: "${h.timeWindow || 'flexibel'}")`).join('\n') || 'Noch keine Habits hinterlegt.';
 
     const prompt = `Du bist ein weltklasse Verhaltenspsychologe und Experte für "Atomic Habits" (James Clear / BJ Fogg).
 Der Nutzer nutzt eine radikal minimalistische Micro-Habit App.
@@ -97,7 +102,8 @@ Schlage GENAU EINEN hochspezifischen, ultrakompakten Micro-Habit vor:
 - Physischer Trigger / Anker (Habit-Stacking Formel: "Direkt nachdem / sobald ich X tue...").
 - Knackige Begründung, warum dies das bestehende Habit-Set optimal ergänzt.
 - Passender Neo-Brutalist Farbcode (#D8F22A, #FF5C00, #38BDF8, #A78BFA, #4ADE80 oder #FB923C).
-- Passendes Icon (droplet, book-open, activity, zap, feather, coffee, smile, sun, moon).`;
+- Passendes Icon (droplet, book-open, activity, zap, feather, coffee, smile, sun, moon).
+- Passendes Zeitfenster im Tagesverlauf (morning = Morgens, midday = Mittags, evening = Abends, anytime = Flexibel).`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.8-flash',
@@ -115,8 +121,13 @@ Schlage GENAU EINEN hochspezifischen, ultrakompakten Micro-Habit vor:
             icon: { type: Type.STRING, description: 'Icon-Name aus der erlaubten Liste' },
             rationale: { type: Type.STRING, description: '1-2 Sätze, warum dieser Habit die bestehende Routine stärkt' },
             missingDomain: { type: Type.STRING, description: 'Erkannter Lebensbereich / Lücke' },
+            timeWindow: {
+              type: Type.STRING,
+              enum: ['morning', 'midday', 'evening', 'anytime'],
+              description: 'Empfohlenes Zeitfenster im Tagesverlauf',
+            },
           },
-          required: ['title', 'cue', 'timeEstimate', 'category', 'color', 'icon', 'rationale', 'missingDomain'],
+          required: ['title', 'cue', 'timeEstimate', 'category', 'color', 'icon', 'rationale', 'missingDomain', 'timeWindow'],
         },
       },
     });
