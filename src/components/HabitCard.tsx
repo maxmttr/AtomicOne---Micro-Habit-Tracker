@@ -20,15 +20,19 @@ import {
   ChevronUp,
   ChevronDown,
   Bell,
+  MessageSquare,
+  MessageSquarePlus,
 } from 'lucide-react';
 
 interface HabitCardProps {
   habit: MicroHabit;
   index: number;
   isCompleted: boolean;
+  note?: string;
   onToggle: (habitId: string) => void;
   onEdit: (habit: MicroHabit) => void;
   onDelete: (habit: MicroHabit) => void;
+  onOpenNote?: (habit: MicroHabit) => void;
   onMoveUp?: (habitId: string) => void;
   onMoveDown?: (habitId: string) => void;
   canMoveUp?: boolean;
@@ -47,9 +51,11 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   habit,
   index,
   isCompleted,
+  note,
   onToggle,
   onEdit,
   onDelete,
+  onOpenNote,
   onMoveUp,
   onMoveDown,
   canMoveUp = false,
@@ -158,11 +164,49 @@ export const HabitCard: React.FC<HabitCardProps> = ({
                 </span>
               </>
             )}
+            {/* Quick "+ Notiz" trigger if completed and has no note yet */}
+            {isCompleted && !note && onOpenNote && (
+              <>
+                <span aria-hidden="true" className="text-zinc-400 dark:text-zinc-600">·</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenNote(habit);
+                  }}
+                  className="inline-flex items-center gap-1 font-mono-numbers text-[10px] font-bold px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-dashed border-zinc-400 dark:border-zinc-600 hover:border-solid hover:border-zinc-900 dark:hover:border-zinc-300 hover:bg-[#D8F22A] hover:text-zinc-950 dark:hover:bg-[#D8F22A] dark:hover:text-zinc-950 transition-colors cursor-pointer"
+                  title="Notiz oder Kontext zur Ausführung hinzufügen"
+                >
+                  <MessageSquarePlus className="w-3 h-3" />
+                  <span>+ Notiz</span>
+                </button>
+              </>
+            )}
           </div>
+
+          {/* Execution Note Banner (if present) */}
+          {note && (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenNote?.(habit);
+              }}
+              className="mt-2 flex items-start gap-1.5 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-xs hover:border-zinc-900 dark:hover:border-zinc-500 transition-colors group/note cursor-pointer"
+              title="Notiz anzeigen und bearbeiten"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <span className="flex-1 font-sans italic break-words line-clamp-2">
+                „{note}“
+              </span>
+              <span className="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-400 group-hover/note:underline shrink-0 ml-1">
+                Bearbeiten
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Web Controls: Reorder, Edit, Delete */}
+      {/* Web Controls: Reorder, Note, Edit, Delete */}
       <div className="flex items-center gap-1 shrink-0 ml-2">
         {/* Move Up / Down */}
         <div className="hidden sm:flex flex-col mr-1">
@@ -193,6 +237,26 @@ export const HabitCard: React.FC<HabitCardProps> = ({
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        {/* Note Action Trigger */}
+        {onOpenNote && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenNote(habit);
+            }}
+            title={note ? "Notiz bearbeiten" : isCompleted ? "Notiz hinzufügen" : "Mit Notiz abschließen"}
+            aria-label={note ? "Notiz bearbeiten" : "Notiz hinzufügen"}
+            className={`p-1.5 transition-colors border cursor-pointer ${
+              note
+                ? 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 border-amber-400 dark:border-amber-700'
+                : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 border-transparent hover:border-zinc-900 dark:hover:border-zinc-700'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+          </button>
+        )}
 
         {/* Edit Button */}
         <button

@@ -109,6 +109,7 @@ function generateSeedLogs(habits: MicroHabit[]): HabitExecution[] {
         habitId: habits[0].id,
         date: dateStr,
         completedAt: new Date().toISOString(),
+        note: 'Kapitel 3 beendet – spannend!',
       });
       logs.push({
         id: `seed-${dateStr}-${habits[2].id}`,
@@ -245,7 +246,12 @@ export const habitStorage = {
     return logs.some((l) => l.habitId === habitId && l.date === dateStr);
   },
 
-  toggleCompletion(habitId: string, dateStr: string): { completed: boolean; logId?: string } {
+  getExecution(habitId: string, dateStr: string): HabitExecution | undefined {
+    const logs = this.getLogs();
+    return logs.find((l) => l.habitId === habitId && l.date === dateStr);
+  },
+
+  toggleCompletion(habitId: string, dateStr: string, note?: string): { completed: boolean; logId?: string; execution?: HabitExecution } {
     const logs = this.getLogs();
     const existingIndex = logs.findIndex((l) => l.habitId === habitId && l.date === dateStr);
 
@@ -253,7 +259,7 @@ export const habitStorage = {
       // Remove
       const removed = logs.splice(existingIndex, 1)[0];
       this.saveLogs(logs);
-      return { completed: false, logId: removed.id };
+      return { completed: false, logId: removed.id, execution: removed };
     } else {
       // Add
       const newLog: HabitExecution = {
@@ -261,11 +267,41 @@ export const habitStorage = {
         habitId,
         date: dateStr,
         completedAt: new Date().toISOString(),
+        ...(note && note.trim() ? { note: note.trim() } : {}),
       };
       logs.push(newLog);
       this.saveLogs(logs);
-      return { completed: true, logId: newLog.id };
+      return { completed: true, logId: newLog.id, execution: newLog };
     }
+  },
+
+  updateExecutionNote(habitId: string, dateStr: string, note: string): { success: boolean; execution?: HabitExecution } {
+    const logs = this.getLogs();
+    const existingIndex = logs.findIndex((l) => l.habitId === habitId && l.date === dateStr);
+    const trimmed = note.trim();
+
+    if (existingIndex >= 0) {
+      if (trimmed) {
+        logs[existingIndex].note = trimmed;
+      } else {
+        delete logs[existingIndex].note;
+      }
+      this.saveLogs(logs);
+      return { success: true, execution: logs[existingIndex] };
+    } else if (trimmed) {
+      // If not yet completed, completing it directly with this note
+      const newLog: HabitExecution = {
+        id: 'log-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+        habitId,
+        date: dateStr,
+        completedAt: new Date().toISOString(),
+        note: trimmed,
+      };
+      logs.push(newLog);
+      this.saveLogs(logs);
+      return { success: true, execution: newLog };
+    }
+    return { success: false };
   },
 
   getMonthlyTargets(): Record<string, number> {

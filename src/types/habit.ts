@@ -34,6 +34,7 @@ export interface HabitExecution {
   habitId: string;
   date: string;            // Format: YYYY-MM-DD (zeitzonenfest)
   completedAt: string;     // ISO Timestamp
+  note?: string;           // Optionaler Gedanke, Kontext oder Fortschritt beim Abhaken
 }
 
 export interface DayStats {

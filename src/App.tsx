@@ -18,6 +18,7 @@ import { AiHabitSuggestionCard } from './components/AiHabitSuggestionCard';
 import { AddHabitModal } from './components/AddHabitModal';
 import { EditHabitModal } from './components/EditHabitModal';
 import { DeleteHabitModal } from './components/DeleteHabitModal';
+import { ExecutionNoteModal } from './components/ExecutionNoteModal';
 import { SettingsPage } from './components/SettingsPage';
 import { WidgetSimulator } from './components/WidgetSimulator';
 import { UndoToast } from './components/UndoToast';
@@ -66,6 +67,8 @@ export default function App() {
     deletedLogs?: HabitExecution[];
   } | null>(null);
   const [habitToDelete, setHabitToDelete] = useState<MicroHabit | null>(null);
+  const [noteModalHabit, setNoteModalHabit] = useState<MicroHabit | null>(null);
+  const [noteModalInitialNote, setNoteModalInitialNote] = useState<string>('');
   const [victoryDismissed, setVictoryDismissed] = useState(false);
 
   // Dark mode state with persistence
@@ -296,6 +299,28 @@ export default function App() {
         deletedLogs: result.logs,
       });
     }
+  };
+
+  const handleOpenNoteModal = (habit: MicroHabit) => {
+    soundManager.playTactileClick();
+    const execution = logs.find((l) => l.habitId === habit.id && l.date === selectedDate);
+    setNoteModalInitialNote(execution?.note || '');
+    setNoteModalHabit(habit);
+  };
+
+  const handleSaveExecutionNote = (noteText: string) => {
+    if (!noteModalHabit) return;
+    const result = habitStorage.updateExecutionNote(noteModalHabit.id, selectedDate, noteText);
+    if (result.success) {
+      soundManager.playTactileClick();
+    }
+    setNoteModalHabit(null);
+  };
+
+  const handleDeleteExecutionNote = () => {
+    if (!noteModalHabit) return;
+    habitStorage.updateExecutionNote(noteModalHabit.id, selectedDate, '');
+    setNoteModalHabit(null);
   };
 
   const handleAddHabit = (newHabitData: Omit<MicroHabit, 'id' | 'createdAt' | 'orderIndex' | 'archived'>) => {
@@ -839,9 +864,11 @@ export default function App() {
                           habit={habit}
                           index={idx}
                           isCompleted={completedIdsForSelectedDate.includes(habit.id)}
+                          note={logs.find((l) => l.habitId === habit.id && l.date === selectedDate)?.note}
                           onToggle={handleToggleHabit}
                           onEdit={(h) => setEditingHabit(h)}
                           onDelete={handleRequestDeleteHabit}
+                          onOpenNote={handleOpenNoteModal}
                           onMoveUp={(id) => {
                             if (sortByDaytime) setSortByDaytime(false);
                             handleMoveUp(id);
@@ -1180,12 +1207,34 @@ export default function App() {
         </div>
       )}
 
+      {/* Execution Note Modal */}
+      <ExecutionNoteModal
+        isOpen={Boolean(noteModalHabit)}
+        habit={noteModalHabit}
+        date={selectedDate}
+        initialNote={noteModalInitialNote}
+        onSave={handleSaveExecutionNote}
+        onDeleteNote={handleDeleteExecutionNote}
+        onClose={() => setNoteModalHabit(null)}
+      />
+
       {/* 4-Second Undo Notification */}
       {undoState && (
         <UndoToast
           message={undoState.message}
           onUndo={handleUndo}
           onDismiss={() => setUndoState(null)}
+          onAddNote={
+            undoState.type === 'toggle' && undoState.habitId && undoState.message.includes('erledigt')
+              ? () => {
+                  const targetHabit = habits.find((h) => h.id === undoState.habitId);
+                  if (targetHabit) {
+                    handleOpenNoteModal(targetHabit);
+                    setUndoState(null);
+                  }
+                }
+              : undefined
+          }
         />
       )}
     </div>
