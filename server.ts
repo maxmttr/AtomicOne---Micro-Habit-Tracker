@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
@@ -6,6 +7,8 @@ import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 
 dotenv.config();
+// AI Studio runtime environment constraint: HMR disabled to avoid WebSocket reconnection errors
+process.env.DISABLE_HMR = 'true';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -160,9 +163,14 @@ function getSmartFallback(currentHabits: any[]) {
 }
 
 async function startServer() {
+  const server = http.createServer(app);
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -173,7 +181,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
   });
 }

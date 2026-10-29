@@ -12,6 +12,25 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // AI Studio environment constraint: HMR is disabled, ignore WebSocket errors
+      window.addEventListener('unhandledrejection', function(event) {
+        if (
+          (event.reason && typeof event.reason.message === 'string' && event.reason.message.includes('WebSocket')) ||
+          (event.reason && typeof event.reason.stack === 'string' && event.reason.stack.includes('@vite/client'))
+        ) {
+          event.preventDefault();
+        }
+      });
+      window.addEventListener('error', function(event) {
+        if (
+          (event.filename && event.filename.includes('@vite/client')) ||
+          (event.message && typeof event.message === 'string' && event.message.includes('WebSocket'))
+        ) {
+          event.preventDefault();
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -5,13 +5,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { MicroHabit, TimeWindow, TIME_WINDOW_META } from '../types/habit';
-import { X, Check } from 'lucide-react';
+import { X, Check, Trash2 } from 'lucide-react';
 
 interface EditHabitModalProps {
   habit: MicroHabit | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: (id: string, updates: Partial<MicroHabit>) => void;
+  onDelete?: (habit: MicroHabit) => void;
 }
 
 const COLORS = ['#D8F22A', '#FF5C00', '#3B82F6', '#10B981', '#A855F7', '#F43F5E'];
@@ -23,6 +24,7 @@ export const EditHabitModal: React.FC<EditHabitModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  onDelete,
 }) => {
   const [title, setTitle] = useState('');
   const [cue, setCue] = useState('');
@@ -202,21 +204,39 @@ export const EditHabitModal: React.FC<EditHabitModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t-2 border-zinc-900 dark:border-zinc-700 mt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold text-xs hover:bg-zinc-100 dark:hover:bg-zinc-700 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] cursor-pointer"
-            >
-              Abbrechen
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 border-2 border-zinc-900 dark:border-zinc-700 bg-[#D8F22A] text-zinc-950 font-bold text-xs shadow-[3px_3px_0px_#141414] dark:shadow-[3px_3px_0px_#27272a] hover:bg-lime-300 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer flex items-center gap-1.5"
-            >
-              <Check className="w-4 h-4 stroke-[3]" />
-              Änderungen sichern
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t-2 border-zinc-900 dark:border-zinc-700 mt-4">
+            {onDelete ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (habit) {
+                    onDelete(habit);
+                    onClose();
+                  }
+                }}
+                className="text-xs font-mono-numbers font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:underline flex items-center gap-1.5 cursor-pointer py-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Habit löschen</span>
+              </button>
+            ) : <div />}
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border-2 border-zinc-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold text-xs hover:bg-zinc-100 dark:hover:bg-zinc-700 shadow-[2px_2px_0px_#141414] dark:shadow-[2px_2px_0px_#27272a] cursor-pointer"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 border-2 border-zinc-900 dark:border-zinc-700 bg-[#D8F22A] text-zinc-950 font-bold text-xs shadow-[3px_3px_0px_#141414] dark:shadow-[3px_3px_0px_#27272a] hover:bg-lime-300 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                Änderungen sichern
+              </button>
+            </div>
           </div>
         </form>
       </div>

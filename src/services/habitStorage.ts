@@ -189,9 +189,33 @@ export const habitStorage = {
     return newHabit;
   },
 
-  deleteHabit(id: string): void {
+  deleteHabit(id: string): { habit: MicroHabit | null; logs: HabitExecution[] } {
     const current = this.getHabits();
+    const habitToDelete = current.find((h) => h.id === id) || null;
     this.saveHabits(current.filter((h) => h.id !== id));
+
+    const currentLogs = this.getLogs();
+    const deletedLogs = currentLogs.filter((l) => l.habitId === id);
+    const remainingLogs = currentLogs.filter((l) => l.habitId !== id);
+    if (deletedLogs.length > 0) {
+      this.saveLogs(remainingLogs);
+    }
+    return { habit: habitToDelete, logs: deletedLogs };
+  },
+
+  restoreHabit(habit: MicroHabit, logs: HabitExecution[] = []): void {
+    const current = this.getHabits();
+    if (!current.some((h) => h.id === habit.id)) {
+      this.saveHabits([...current, habit]);
+    }
+    if (logs.length > 0) {
+      const currentLogs = this.getLogs();
+      const existingIds = new Set(currentLogs.map((l) => l.id));
+      const toAdd = logs.filter((l) => !existingIds.has(l.id));
+      if (toAdd.length > 0) {
+        this.saveLogs([...currentLogs, ...toAdd]);
+      }
+    }
   },
 
   getLogs(): HabitExecution[] {

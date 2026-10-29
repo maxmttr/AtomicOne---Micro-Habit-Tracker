@@ -17,6 +17,7 @@ import { WeeklyVictoryCard } from './components/WeeklyVictoryCard';
 import { AiHabitSuggestionCard } from './components/AiHabitSuggestionCard';
 import { AddHabitModal } from './components/AddHabitModal';
 import { EditHabitModal } from './components/EditHabitModal';
+import { DeleteHabitModal } from './components/DeleteHabitModal';
 import { SettingsPage } from './components/SettingsPage';
 import { WidgetSimulator } from './components/WidgetSimulator';
 import { UndoToast } from './components/UndoToast';
@@ -56,7 +57,15 @@ export default function App() {
   const [editingHabit, setEditingHabit] = useState<MicroHabit | null>(null);
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [undoState, setUndoState] = useState<{ message: string; habitId: string; date: string } | null>(null);
+  const [undoState, setUndoState] = useState<{
+    message: string;
+    type: 'toggle' | 'delete';
+    habitId?: string;
+    date?: string;
+    deletedHabit?: MicroHabit;
+    deletedLogs?: HabitExecution[];
+  } | null>(null);
+  const [habitToDelete, setHabitToDelete] = useState<MicroHabit | null>(null);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
 
   // Dark mode state with persistence
@@ -164,6 +173,7 @@ export default function App() {
 
       setUndoState({
         message: `„${habit.title}“ erledigt!`,
+        type: 'toggle',
         habitId,
         date: selectedDate,
       });
@@ -191,6 +201,7 @@ export default function App() {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setUndoState({
         message: `„${habit.title}“ zurückgesetzt`,
+        type: 'toggle',
         habitId,
         date: selectedDate,
       });
@@ -256,12 +267,35 @@ export default function App() {
     if (!undoState) return;
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     soundManager.playUndoClick();
-    habitStorage.toggleCompletion(undoState.habitId, undoState.date);
+    if (undoState.type === 'delete' && undoState.deletedHabit) {
+      habitStorage.restoreHabit(undoState.deletedHabit, undoState.deletedLogs);
+    } else if (undoState.habitId && undoState.date) {
+      habitStorage.toggleCompletion(undoState.habitId, undoState.date);
+    }
     setUndoState(null);
   };
 
-  const handleDeleteHabit = (id: string) => {
-    habitStorage.deleteHabit(id);
+  const handleRequestDeleteHabit = (habit: MicroHabit) => {
+    soundManager.playTactileClick();
+    setHabitToDelete(habit);
+  };
+
+  const handleConfirmDeleteHabit = async (habit: MicroHabit) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    soundManager.playUndoClick();
+    const result = habitStorage.deleteHabit(habit.id);
+    setHabitToDelete(null);
+    if (editingHabit?.id === habit.id) {
+      setEditingHabit(null);
+    }
+    if (result.habit) {
+      setUndoState({
+        message: `„${result.habit.title}“ gelöscht`,
+        type: 'delete',
+        deletedHabit: result.habit,
+        deletedLogs: result.logs,
+      });
+    }
   };
 
   const handleAddHabit = (newHabitData: Omit<MicroHabit, 'id' | 'createdAt' | 'orderIndex' | 'archived'>) => {
@@ -282,6 +316,7 @@ export default function App() {
     });
     setUndoState({
       message: `KI-Habit „${suggestion.title}“ hinzugefügt!`,
+      type: 'toggle',
       habitId: '',
       date: selectedDate,
     });
@@ -806,7 +841,7 @@ export default function App() {
                           isCompleted={completedIdsForSelectedDate.includes(habit.id)}
                           onToggle={handleToggleHabit}
                           onEdit={(h) => setEditingHabit(h)}
-                          onDelete={handleDeleteHabit}
+                          onDelete={handleRequestDeleteHabit}
                           onMoveUp={(id) => {
                             if (sortByDaytime) setSortByDaytime(false);
                             handleMoveUp(id);
@@ -1036,6 +1071,8 @@ export default function App() {
             onResetData={handleResetDefaults}
             habitCount={activeHabits.length}
             logCount={logs.length}
+            habits={activeHabits}
+            onDeleteHabit={handleRequestDeleteHabit}
           />
         )}
       </main>
@@ -1071,6 +1108,15 @@ export default function App() {
         isOpen={editingHabit !== null}
         onClose={() => setEditingHabit(null)}
         onSave={handleSaveEdit}
+        onDelete={handleRequestDeleteHabit}
+      />
+
+      {/* Delete Habit Confirmation Modal */}
+      <DeleteHabitModal
+        habit={habitToDelete}
+        isOpen={habitToDelete !== null}
+        onClose={() => setHabitToDelete(null)}
+        onConfirm={handleConfirmDeleteHabit}
       />
 
       {/* Keyboard Shortcuts Helper Modal */}

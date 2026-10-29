@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { Haptics, ImpactFeedbackStyle } from '../utils/haptics';
 import { soundManager } from '../utils/audio';
+import { MicroHabit, TIME_WINDOW_META } from '../types/habit';
 import {
   Smartphone,
   Zap,
@@ -20,6 +21,7 @@ import {
   Database,
   Download,
   Flame,
+  Trash2,
 } from 'lucide-react';
 import { habitStorage } from '../services/habitStorage';
 
@@ -29,6 +31,8 @@ interface SettingsPageProps {
   onResetData: () => void;
   habitCount: number;
   logCount: number;
+  habits?: MicroHabit[];
+  onDeleteHabit?: (habit: MicroHabit) => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -37,6 +41,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onResetData,
   habitCount,
   logCount,
+  habits = [],
+  onDeleteHabit,
 }) => {
   const [hapticsEnabled, setHapticsEnabled] = useState(() => Haptics.isEnabled());
   const [intensity, setIntensity] = useState(() => Haptics.getIntensity());
@@ -370,6 +376,76 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Card 3.5: Habit Management & Deletion */}
+        {habits.length > 0 && onDeleteHabit && (
+          <div className="bg-white dark:bg-zinc-900 border-2 border-zinc-900 dark:border-zinc-700 p-5 shadow-[4px_4px_0px_#141414] dark:shadow-[4px_4px_0px_#27272a] space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-zinc-900 dark:border-zinc-700">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center border-2 border-zinc-900 dark:border-zinc-700 font-bold">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100">
+                    Habits verwalten & löschen
+                  </h3>
+                  <span className="text-[11px] font-mono-numbers text-zinc-500 dark:text-zinc-400 block">
+                    {habits.length} aktive Micro-Habits in deiner Routine
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              Hier kannst du einzelne Habits direkt entfernen. Du kannst das Löschen kurzzeitig rückgängig machen.
+            </p>
+
+            <div className="divide-y divide-zinc-200 dark:divide-zinc-800 border-2 border-zinc-900 dark:border-zinc-700">
+              {habits.map((h) => {
+                const tw = h.timeWindow ? TIME_WINDOW_META[h.timeWindow] : null;
+                return (
+                  <div
+                    key={h.id}
+                    className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      <div
+                        className="w-2.5 h-6 shrink-0 border border-zinc-900 dark:border-zinc-600"
+                        style={{ backgroundColor: h.color }}
+                      />
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block truncate">
+                          {h.title}
+                        </span>
+                        <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 dark:text-zinc-400 font-mono-numbers">
+                          <span className="truncate">{h.cue}</span>
+                          <span>·</span>
+                          <span>{h.timeEstimate}</span>
+                          {tw && (
+                            <>
+                              <span>·</span>
+                              <span>{tw.emoji} {tw.label}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => onDeleteHabit(h)}
+                      className="px-2.5 py-1 text-xs font-mono-numbers font-bold text-rose-600 dark:text-rose-400 hover:text-white hover:bg-rose-600 border border-zinc-900 dark:border-zinc-700 hover:border-zinc-900 shadow-xs flex items-center gap-1 cursor-pointer transition-colors shrink-0"
+                      title={`„${h.title}“ löschen`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Löschen</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Card 4: Micro-Habit Philosophy & Best Practices */}
         <div className="bg-white dark:bg-zinc-900 border-2 border-zinc-900 dark:border-zinc-700 p-5 shadow-[4px_4px_0px_#141414] dark:shadow-[4px_4px_0px_#27272a] space-y-3">

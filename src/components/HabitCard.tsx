@@ -28,7 +28,7 @@ interface HabitCardProps {
   isCompleted: boolean;
   onToggle: (habitId: string) => void;
   onEdit: (habit: MicroHabit) => void;
-  onDelete: (habitId: string) => void;
+  onDelete: (habit: MicroHabit) => void;
   onMoveUp?: (habitId: string) => void;
   onMoveDown?: (habitId: string) => void;
   canMoveUp?: boolean;
@@ -163,7 +163,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
       </div>
 
       {/* Web Controls: Reorder, Edit, Delete */}
-      <div className="flex items-center gap-1 shrink-0 ml-3 opacity-80 sm:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 shrink-0 ml-2">
         {/* Move Up / Down */}
         <div className="hidden sm:flex flex-col mr-1">
           <button
@@ -203,7 +203,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
           }}
           title="Habit bearbeiten"
           aria-label="Habit bearbeiten"
-          className="p-1.5 text-zinc-400 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-transparent hover:border-zinc-900 dark:hover:border-zinc-700 cursor-pointer"
+          className="p-1.5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-transparent hover:border-zinc-900 dark:hover:border-zinc-700 cursor-pointer"
         >
           <Pencil className="w-3.5 h-3.5" />
         </button>
@@ -213,11 +213,11 @@ export const HabitCard: React.FC<HabitCardProps> = ({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(habit.id);
+            onDelete(habit);
           }}
-          title="Habit entfernen"
+          title="Habit löschen"
           aria-label="Habit löschen"
-          className="p-1.5 text-zinc-400 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-transparent hover:border-zinc-900 dark:hover:border-zinc-700 cursor-pointer"
+          className="p-1.5 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors border border-transparent hover:border-rose-300 dark:hover:border-rose-900 cursor-pointer"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
