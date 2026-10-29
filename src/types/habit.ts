@@ -99,4 +99,45 @@ export interface AiHabitSuggestion {
   timeWindow?: TimeWindow; // Empfohlenes Zeitfenster (morgens, mittags, abends, anytime)
 }
 
+export interface SuggestedFocusHabit {
+  habit: MicroHabit;
+  previousWeek: {
+    startDate: string;
+    endDate: string;
+    dateRangeLabel: string;
+    completedDays: number;
+    totalDays: number;
+    percentage: number;
+    dayHistory: { date: string; dayName: string; completed: boolean }[];
+  };
+  challengeTitle: string;
+  challengePrompt: string;
+  reason: string;
+  isCompletedToday: boolean;
+}
+
+export interface WeekTrendPoint {
+  weekIndex: number;          // 0 = vor 3 Wochen, 1 = vor 2 Wochen, 2 = Vorwoche, 3 = Aktuell
+  weekKey: string;            // e.g. "w-3", "w-2", "w-1", "w-0"
+  label: string;              // "Vor 3 Wochen", "Vor 2 Wochen", "Letzte Woche", "Diese Woche"
+  shortLabel: string;         // "W-3", "W-2", "W-1", "Aktuell"
+  startDate: string;          // YYYY-MM-DD
+  endDate: string;            // YYYY-MM-DD
+  dateRangeLabel: string;     // e.g. "02.10. – 08.10."
+  completedCount: number;
+  totalPossible: number;
+  percentage: number;         // 0 - 100
+  isCurrentWeek: boolean;
+}
+
+export interface FourWeekTrendData {
+  weeks: WeekTrendPoint[];
+  averageScore: number;
+  bestScore: number;
+  deltaFromPreviousWeek: number; // e.g. +8 or -5
+  trendDirection: 'up' | 'down' | 'neutral';
+  benchmarkTarget: number;       // e.g. 85
+}
+
+
 

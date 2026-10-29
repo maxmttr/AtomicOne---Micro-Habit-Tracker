@@ -19,6 +19,8 @@ import { AddHabitModal } from './components/AddHabitModal';
 import { EditHabitModal } from './components/EditHabitModal';
 import { DeleteHabitModal } from './components/DeleteHabitModal';
 import { ExecutionNoteModal } from './components/ExecutionNoteModal';
+import { SuggestedFocusHabitCard } from './components/SuggestedFocusHabitCard';
+import { ConsistencyTrendChart } from './components/ConsistencyTrendChart';
 import { SettingsPage } from './components/SettingsPage';
 import { WidgetSimulator } from './components/WidgetSimulator';
 import { UndoToast } from './components/UndoToast';
@@ -69,6 +71,7 @@ export default function App() {
   const [habitToDelete, setHabitToDelete] = useState<MicroHabit | null>(null);
   const [noteModalHabit, setNoteModalHabit] = useState<MicroHabit | null>(null);
   const [noteModalInitialNote, setNoteModalInitialNote] = useState<string>('');
+  const [focusHabitCycleIndex, setFocusHabitCycleIndex] = useState<number>(0);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
 
   // Dark mode state with persistence
@@ -131,6 +134,17 @@ export default function App() {
 
   // Weekly Victory status: checks if every single day in the 7-day period is >= 80%
   const weeklyVictory: WeeklyVictoryStatus = habitStorage.getWeeklyVictoryStatus(selectedDate);
+
+  // Reset focus habit cycle on date switch
+  useEffect(() => {
+    setFocusHabitCycleIndex(0);
+  }, [selectedDate]);
+
+  // Dynamic suggested focus habit based on lowest consistency in previous week
+  const suggestedFocusHabit = habitStorage.getSuggestedFocusHabit(selectedDate, focusHabitCycleIndex);
+
+  // 4-Week Long-Term Consistency Trend Data (D3.js Line Chart)
+  const fourWeekTrend = habitStorage.getFourWeekTrend(selectedDate);
 
   // Celebratory Victory Confetti Animation (Multi-stage burst)
   const fireVictoryConfetti = useCallback(() => {
@@ -644,6 +658,17 @@ export default function App() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Habits Column (7 cols) */}
             <div className="lg:col-span-7 space-y-4">
+              {/* Dynamic Suggested Focus Habit Block */}
+              {suggestedFocusHabit && (
+                <SuggestedFocusHabitCard
+                  focusData={suggestedFocusHabit}
+                  onToggleHabit={handleToggleHabit}
+                  onOpenNote={handleOpenNoteModal}
+                  onCycleNext={() => setFocusHabitCycleIndex((prev) => prev + 1)}
+                  hasMultipleHabits={activeHabits.length > 1}
+                />
+              )}
+
               {/* Daily Progress Kicker & Filter Controls */}
               <div className="bg-white dark:bg-zinc-900 border-2 border-zinc-900 dark:border-zinc-700 p-4 shadow-[4px_4px_0px_#141414] dark:shadow-[4px_4px_0px_#27272a]">
                 <div className="flex items-center justify-between mb-3">
@@ -864,6 +889,7 @@ export default function App() {
                           habit={habit}
                           index={idx}
                           isCompleted={completedIdsForSelectedDate.includes(habit.id)}
+                          streak={habitStorage.getHabitStreak(habit.id, selectedDate)}
                           note={logs.find((l) => l.habitId === habit.id && l.date === selectedDate)?.note}
                           onToggle={handleToggleHabit}
                           onEdit={(h) => setEditingHabit(h)}
@@ -1022,6 +1048,9 @@ export default function App() {
                 onFireConfetti={fireVictoryConfetti}
               />
             )}
+
+            {/* D3.js 4-Week Consistency Trend Line Chart */}
+            <ConsistencyTrendChart trendData={fourWeekTrend} />
 
             <div className="bg-white dark:bg-zinc-900 border-2 border-zinc-900 dark:border-zinc-700 p-5 shadow-[4px_4px_0px_#141414] dark:shadow-[4px_4px_0px_#27272a]">
               <span className="text-[11px] font-mono-numbers uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-bold block mb-1">

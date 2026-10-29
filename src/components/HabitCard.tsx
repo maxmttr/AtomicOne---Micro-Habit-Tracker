@@ -22,12 +22,14 @@ import {
   Bell,
   MessageSquare,
   MessageSquarePlus,
+  Flame,
 } from 'lucide-react';
 
 interface HabitCardProps {
   habit: MicroHabit;
   index: number;
   isCompleted: boolean;
+  streak?: number;
   note?: string;
   onToggle: (habitId: string) => void;
   onEdit: (habit: MicroHabit) => void;
@@ -51,6 +53,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   habit,
   index,
   isCompleted,
+  streak,
   note,
   onToggle,
   onEdit,
@@ -117,7 +120,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
 
         {/* Habit Content */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span
               className={`text-base font-bold tracking-tight truncate ${
                 isCompleted
@@ -130,6 +133,17 @@ export const HabitCard: React.FC<HabitCardProps> = ({
             <IconComponent
               className={`w-4 h-4 shrink-0 ${isCompleted ? 'text-zinc-400 dark:text-zinc-600' : 'text-zinc-700 dark:text-zinc-300'}`}
             />
+
+            {/* Visual Streak Badge for 5+ days */}
+            {typeof streak === 'number' && streak >= 5 && (
+              <span
+                className="inline-flex items-center gap-1 font-mono-numbers text-[10px] sm:text-[11px] font-black uppercase px-2 py-0.5 border border-zinc-950 dark:border-zinc-600 bg-[#FF5C00] text-white shadow-[1.5px_1.5px_0px_#141414] dark:shadow-[1.5px_1.5px_0px_#27272a] shrink-0"
+                title={`${streak} Tage Streak in Folge!`}
+              >
+                <Flame className="w-3.5 h-3.5 fill-white stroke-[2.5]" />
+                <span>{streak} Tage</span>
+              </span>
+            )}
           </div>
 
           {/* Context Cue & Metadata (Unboxed Clean Typography) */}
