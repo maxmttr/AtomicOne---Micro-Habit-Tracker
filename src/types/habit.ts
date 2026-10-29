@@ -59,6 +59,8 @@ export interface MonthlyConsistency {
   totalCompletedExecutions: number;
   totalPossibleExecutions: number;
   consistencyScore: number; // z. B. 84 (%)
+  monthlyTarget?: number | null; // Optionales Monatsziel in Prozent, z. B. 85 (%)
+  isTargetAchieved?: boolean;    // true wenn consistencyScore >= monthlyTarget
   dailyMap: Record<string, { completedIds: string[]; total: number }>;
   weekdayStats: WeekdayStat[];
   bestWeekday: string;

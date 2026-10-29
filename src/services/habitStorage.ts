@@ -8,6 +8,7 @@ import { getTodayDateString, getCurrentYearMonth, getDaysInMonth, getRollingWeek
 
 const STORAGE_KEY_HABITS = 'atomic_habits_v1';
 const STORAGE_KEY_LOGS = 'atomic_logs_v1';
+const STORAGE_KEY_MONTHLY_TARGETS = 'atomic_monthly_targets_v1';
 
 const DEFAULT_HABITS: MicroHabit[] = [
   {
@@ -243,6 +244,41 @@ export const habitStorage = {
     }
   },
 
+  getMonthlyTargets(): Record<string, number> {
+    if (typeof window === 'undefined') return {};
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_MONTHLY_TARGETS);
+      if (!stored) {
+        // Default seed: set an initial target of 85% for the current month so users immediately see it in action
+        const currentYM = getCurrentYearMonth();
+        const initial = { [currentYM]: 85 };
+        localStorage.setItem(STORAGE_KEY_MONTHLY_TARGETS, JSON.stringify(initial));
+        return initial;
+      }
+      return JSON.parse(stored);
+    } catch {
+      return {};
+    }
+  },
+
+  getMonthlyTarget(yearMonth: string = getCurrentYearMonth()): number | null {
+    const targets = this.getMonthlyTargets();
+    const val = targets[yearMonth];
+    return typeof val === 'number' && val >= 1 && val <= 100 ? val : null;
+  },
+
+  setMonthlyTarget(yearMonth: string, target: number | null): void {
+    if (typeof window === 'undefined') return;
+    const targets = this.getMonthlyTargets();
+    if (target === null || target === undefined || isNaN(target) || target <= 0) {
+      delete targets[yearMonth];
+    } else {
+      targets[yearMonth] = Math.min(100, Math.max(1, Math.round(target)));
+    }
+    localStorage.setItem(STORAGE_KEY_MONTHLY_TARGETS, JSON.stringify(targets));
+    this.notify();
+  },
+
   getMonthlyConsistency(yearMonth: string = getCurrentYearMonth()): MonthlyConsistency {
     const habits = this.getHabits().filter((h) => !h.archived);
     const logs = this.getLogs();
@@ -313,6 +349,9 @@ export const habitStorage = {
     const elapsedDays = isCurrentMonth ? currentDayNum : days.length;
     const totalPossible = Math.max(1, elapsedDays * habits.length);
     const score = Math.round((totalCompleted / totalPossible) * 100);
+    const consistencyScore = Math.min(100, Math.max(0, score));
+    const monthlyTarget = this.getMonthlyTarget(yearMonth);
+    const isTargetAchieved = monthlyTarget !== null ? consistencyScore >= monthlyTarget : false;
 
     return {
       yearMonth,
@@ -320,7 +359,9 @@ export const habitStorage = {
       activeDaysCount: daysWithAtLeastOne,
       totalCompletedExecutions: totalCompleted,
       totalPossibleExecutions: totalPossible,
-      consistencyScore: Math.min(100, Math.max(0, score)),
+      consistencyScore,
+      monthlyTarget,
+      isTargetAchieved,
       dailyMap,
       weekdayStats,
       bestWeekday: `${bestDayName} (${Math.max(0, bestDayPct)}%)`,
@@ -473,6 +514,9 @@ export const habitStorage = {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEY_HABITS);
     localStorage.removeItem(STORAGE_KEY_LOGS);
+    localStorage.removeItem(STORAGE_KEY_MONTHLY_TARGETS);
+    const currentYM = getCurrentYearMonth();
+    localStorage.setItem(STORAGE_KEY_MONTHLY_TARGETS, JSON.stringify({ [currentYM]: 85 }));
     this.saveHabits(DEFAULT_HABITS);
     this.saveLogs(generateSeedLogs(DEFAULT_HABITS));
   },

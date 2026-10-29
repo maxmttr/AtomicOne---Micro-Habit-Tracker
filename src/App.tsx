@@ -859,6 +859,8 @@ export default function App() {
                 onPrevMonth={handlePrevMonth}
                 onNextMonth={handleNextMonth}
                 showWeekdayInsights={true}
+                onTriggerCelebration={fireVictoryConfetti}
+                onUpdateTarget={(target) => habitStorage.setMonthlyTarget(activeYearMonth, target)}
               />
 
               {/* Quick Philosophy Card */}
@@ -904,6 +906,8 @@ export default function App() {
               onPrevMonth={handlePrevMonth}
               onNextMonth={handleNextMonth}
               showWeekdayInsights={true}
+              onTriggerCelebration={fireVictoryConfetti}
+              onUpdateTarget={(target) => habitStorage.setMonthlyTarget(activeYearMonth, target)}
             />
 
             {/* In-Depth Philosophy Breakdown */}
